@@ -1,0 +1,40 @@
+// Progress and settings, saved on this device only.
+
+const KEY = 'piano-tutor:v1';
+
+const defaults = {
+  done: {},          // lessonId -> true
+  last: null,        // { lesson, step }
+  settings: {
+    volume: 0.8,
+    anyOctave: true, // accept the right note in a neighbouring octave (mic only)
+    keyNames: true,  // show note names on keys where the lesson allows
+  },
+};
+
+function read() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return structuredClone(defaults);
+    const data = JSON.parse(raw);
+    return { ...structuredClone(defaults), ...data, settings: { ...defaults.settings, ...data.settings } };
+  } catch {
+    return structuredClone(defaults);
+  }
+}
+
+export const store = {
+  data: read(),
+  save() {
+    try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch { /* private mode */ }
+  },
+  markDone(id) { this.data.done[id] = true; this.save(); },
+  isDone(id) { return !!this.data.done[id]; },
+  setLast(lesson, step) { this.data.last = { lesson, step }; this.save(); },
+  setting(k, v) {
+    if (v === undefined) return this.data.settings[k];
+    this.data.settings[k] = v;
+    this.save();
+  },
+  reset() { this.data = structuredClone(defaults); this.save(); },
+};
