@@ -46,13 +46,32 @@ export const DUR_BEATS = { w: 4, 'h.': 3, h: 2, 'q.': 1.5, q: 1, '8.': 0.75, 8: 
  *   "C4/q/1 D4/q/2 E4/h/3 r/q"   -> note / duration / finger
  *   "[C4 E4 G4]/h/1-3-5"         -> chord (several notes at once)
  *
- * Duration and finger are optional. "r" is a rest.
+ * Duration and finger are optional. "r" is a rest. Markings:
+ *   "C4'/q"        staccato (short and detached)
+ *   "~C4/q"        tied to the previous note (held, not played again)
+ *   "(C4/q ... G4/q)"  a slur from the first note to the last
+ *   "!p" "!mf" "!f" "!cresc" "!dim" "!ped" "!lift"  marks the next note
+ *   "|:" and ":|"  repeat signs (the music between them is played twice)
  */
+const MARKS = new Set(['pp', 'p', 'mp', 'mf', 'f', 'ff', 'cresc', 'dim', 'ped', 'lift']);
+
 export function parseSeq(str, defaults = {}) {
   const out = [];
-  const tokens = str.match(/\[[^\]]+\][^\s]*|\S+/g) || [];
-  for (const tok of tokens) {
+  const tokens = str.match(/\(?~?\[[^\]]+\][^\s]*|\S+/g) || [];
+  let marks = [];
+  for (let tok of tokens) {
     if (tok === '|') { out.push({ bar: true }); continue; }
+    if (tok === '|:' || tok === ':|') { out.push({ bar: true, repeat: tok === '|:' ? 'start' : 'end' }); continue; }
+    if (tok.startsWith('!')) {
+      const mark = tok.slice(1);
+      if (!MARKS.has(mark)) throw new Error(`Unknown mark: ${tok}`);
+      marks.push(mark);
+      continue;
+    }
+    let slurStart = false, slurEnd = false, tie = false, staccato = false;
+    if (tok.startsWith('(')) { slurStart = true; tok = tok.slice(1); }
+    if (tok.endsWith(')')) { slurEnd = true; tok = tok.slice(0, -1); }
+    if (tok.startsWith('~')) { tie = true; tok = tok.slice(1); }
     let head = tok, rest = '';
     if (tok.startsWith('[')) {
       const close = tok.indexOf(']');
@@ -63,20 +82,29 @@ export function parseSeq(str, defaults = {}) {
       head = slash === -1 ? tok : tok.slice(0, slash);
       rest = slash === -1 ? '' : tok.slice(slash);
     }
+    if (head.endsWith("'")) { staccato = true; head = head.slice(0, -1); }
+    if (rest.startsWith("'")) { staccato = true; rest = rest.slice(1); }
     const parts = rest.split('/').filter(Boolean);
     const dur = parts[0] || defaults.dur || 'q';
     const fingerStr = parts[1] || '';
     if (head === 'r') { out.push({ rest: true, dur, notes: [] }); continue; }
     const names = head.split(/\s+/).filter(Boolean);
     const fingers = fingerStr ? fingerStr.split('-').map(Number) : [];
-    out.push({
+    const ev = {
       notes: names,
       midis: names.map(toMidi),
       dur,
       fingers,
       hand: defaults.hand,
-    });
+    };
+    if (marks.length) { ev.marks = marks; marks = []; }
+    if (slurStart) ev.slurStart = true;
+    if (slurEnd) ev.slurEnd = true;
+    if (tie) ev.tie = true;
+    if (staccato) ev.staccato = true;
+    out.push(ev);
   }
+  if (marks.length) throw new Error(`Marks with no note after them: ${marks.join(' ')}`);
   return out;
 }
 

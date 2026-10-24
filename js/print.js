@@ -56,7 +56,7 @@ function songPage(unit, lesson, step) {
     ? 'Finger numbers sit above the right hand and below the left. 1 is the thumb.'
     : 'Small numbers are fingers. 1 is the thumb.';
   page.innerHTML = `<header class="paper-head">
-      <p class="paper-eyebrow">${lesson.hymn ? `Hymn · Level ${lesson.level}` : lesson.recital ? 'Recital' : unit.title}</p>
+      <p class="paper-eyebrow">${lesson.hymn ? `Hymn · Unit ${lesson.unitNumber}` : lesson.recital ? 'Recital' : unit.title}</p>
       <h1>${songTitle(lesson, step)}</h1>
       <p class="paper-sub">${facts.join(' · ')}</p>
     </header>

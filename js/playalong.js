@@ -240,7 +240,8 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
         g.fillStyle = '#fff';
         g.font = '700 13px -apple-system, BlinkMacSystemFont, sans-serif';
         g.textAlign = 'center';
-        g.fillText(String(it.finger), k.x + k.w / 2, yBottom - 7);
+        const hand = store.setting('handLabels') && k.w > 30 ? it.hand : '';
+        g.fillText(`${hand}${it.finger}`, k.x + k.w / 2, yBottom - 7);
       }
     }
     g.globalAlpha = 1;

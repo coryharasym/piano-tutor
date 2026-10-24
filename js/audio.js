@@ -71,7 +71,7 @@ class Piano {
     out.connect(this.master);
     const sampleMidi = this.nearest(midi);
     let src;
-    const peak = 0.25 + velocity * 0.75;
+    const peak = 0.12 + velocity * 0.88;
 
     if (sampleMidi != null) {
       src = this.ctx.createBufferSource();
@@ -106,10 +106,11 @@ class Piano {
     this.listeners.forEach((fn) => fn(midi, t));
 
     return {
-      stop: () => {
-        const now = this.ctx.currentTime;
-        out.gain.cancelScheduledValues(now);
-        out.gain.setTargetAtTime(0, now, 0.08);
+      // Fade out now, or at a later audio time (a pedal lifting).
+      stop: (at) => {
+        const when = Math.max(this.ctx.currentTime, at || 0);
+        out.gain.cancelScheduledValues(when);
+        out.gain.setTargetAtTime(0, when, 0.08);
       },
     };
   }

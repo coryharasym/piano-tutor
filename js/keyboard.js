@@ -2,6 +2,7 @@
 
 import { isBlack, midiToName, prettyName } from './theory.js';
 import { piano } from './audio.js';
+import { store } from './store.js';
 
 // Black keys sit between whites; this offset (in white-key widths) nudges
 // them the way a real keyboard does.
@@ -92,7 +93,10 @@ export class Keyboard {
       this.targets.set(t.midi, t);
       k.classList.add(style === 'soft' ? 'soft' : 'target');
       if (t.hand) k.classList.add('hand-' + t.hand);
-      k.querySelector('.key-finger').textContent = t.finger || '';
+      const badge = k.querySelector('.key-finger');
+      const withHand = t.finger && t.hand && store.setting('handLabels');
+      badge.classList.toggle('with-hand', !!withHand);
+      badge.innerHTML = withHand ? `<small>${t.hand}</small>${t.finger}` : (t.finger || '');
     }
     this.scrollToTargets(true);
   }

@@ -16,6 +16,7 @@ class Listener {
     this.timer = null;
     this.tuning = 0; // semitones the player's piano (or this phone) sounds sharp
     this.onRaw = new Set(); // unrounded, untuned pitch readings, for tuning
+    this.history = []; // [{t, level}] for the last few seconds, for loudness and length
 
 
     // Ignore the mic briefly while the app itself is making sound,
@@ -68,6 +69,9 @@ class Listener {
     const a = this.analyser;
     a.getFloatTimeDomainData(this.time);
     const level = rms(this.time);
+    const now = performance.now();
+    this.history.push({ t: now, level });
+    while (this.history.length && now - this.history[0].t > 3000) this.history.shift();
     this.onLevel.forEach((fn) => fn(level));
     if (performance.now() < this.muteUntil) {
       this.tracker.push({ level: 0, pitch: null });
@@ -101,6 +105,17 @@ class Listener {
   }
 
   clearRecent() { this.recent = []; }
+
+  // How loud a note heard at time t was at its start, and how much of that
+  // was still sounding 300 ms later (short for staccato, long for legato).
+  // Call it at least 400 ms after t.
+  noteShape(t) {
+    const near = (a, b) => this.history.filter((x) => x.t >= t + a && x.t <= t + b).map((x) => x.level);
+    const peak = Math.max(0, ...near(-250, 120));
+    const later = near(300, 400);
+    const tail = later.length ? later.reduce((a, b) => a + b, 0) / later.length : 0;
+    return { peak, sustain: peak ? tail / peak : 0 };
+  }
 }
 
 export const listener = new Listener();

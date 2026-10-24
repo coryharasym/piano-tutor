@@ -188,7 +188,6 @@ li { margin-bottom: .25em; }
 .chip.now small { color: rgba(255, 255, 255, .85); }
 .chip.hand-L.now { background: var(--left); }
 .chip.done { opacity: .35; transform: scale(.94); }
-.chip.playing { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1; }
 .chip .sub { display: inline-block; margin: 0 6px; font-weight: 700; font-size: 1.1rem; color: var(--ink-soft); transition: color .2s; }
 .chip .sub.ok { color: var(--good); }
 .chip:has(.sub) { width: auto; padding: 0 14px; display: flex; }
@@ -367,3 +366,46 @@ li { margin-bottom: .25em; }
 .sheet-actions .btn .icon { width: 16px; height: 16px; vertical-align: -3px; }
 .tune-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 4px; }
 .tune-bar i { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .2s var(--ease); }
+
+/* What the mic noticed about loud/soft and short/long */
+.feedback .expr-tip { margin: 0 0 4px; color: var(--ink); }
+
+/* Daily practice card and practice tools on the home page */
+.continue { display: flex; gap: 12px; align-items: stretch; }
+.continue { margin-bottom: 22px; }
+.continue > .continue-card { flex: 1.4; margin-bottom: 0; }
+.metro .btn .icon { width: 18px; height: 18px; vertical-align: -4px; }
+.practice-col { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.daily-card {
+  flex: 1; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); font: inherit;
+}
+.daily-card .title { font-size: 1.05rem; font-weight: 700; }
+.daily-card .eyebrow .icon { width: 14px; height: 14px; vertical-align: -2px; }
+.daily-card.done { border-color: var(--good); }
+.daily-card.done .eyebrow { color: var(--good); }
+.daily-card:disabled { opacity: .55; }
+.tool-row { display: flex; gap: 8px; }
+.tool-row .pill { flex: 1; justify-content: center; }
+.tool-row .pill:disabled { opacity: .45; }
+@media (max-width: 640px) { .continue { flex-direction: column; } }
+
+/* Metronome */
+.metro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 12px 16px 24px; }
+.metro-dots { display: flex; gap: 14px; }
+.metro-dots i { width: 22px; height: 22px; border-radius: 50%; background: var(--line); transition: background .06s, transform .06s; }
+.metro-dots i.one { width: 28px; height: 28px; }
+.metro-dots i.lit { background: var(--accent); transform: scale(1.15); }
+.metro-tempo { display: flex; align-items: center; gap: 24px; }
+.metro-tempo .icon-btn { font-size: 1.6rem; }
+.metro-bpm { display: flex; flex-direction: column; align-items: center; min-width: 9ch; }
+.metro-bpm b { font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.metro [data-slider] { width: min(520px, 100%); accent-color: var(--accent); }
+.metro-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { padding: 8px 14px; background: none; border: 0; color: var(--ink-soft); font: inherit; }
+.seg button.on { background: var(--accent); color: #fff; }
+
+/* Finger badges can also say which hand: "R 1", "L 5" */
+.key-finger.with-hand { width: auto; min-width: 26px; padding: 0 6px; border-radius: 13px; gap: 1px; grid-auto-flow: column; }
+.key-finger small { font-size: .62rem; font-weight: 800; opacity: .85; }
