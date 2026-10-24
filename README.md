@@ -23,11 +23,17 @@ Then open http://localhost:8080. The microphone only works on `https://` or `loc
 
 ## Tests
 
+GitHub Pages serves the site straight from `main`; the Tests workflow runs on every push and pull request.
+
 ```sh
 npm test
 ```
 
 Checks that every lesson's notes parse and add up bar by bar, that both hands line up, and that the pitch detector picks out the right notes from the real piano recordings (needs `ffmpeg`).
+
+## Publishing
+
+GitHub Pages serves the site straight from the `main` branch. The Tests workflow runs on every push and pull request.
 
 ## Writing lessons
 
