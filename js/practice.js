@@ -1,7 +1,7 @@
 // Turns a lesson's play step into "moments": the notes that must be played
 // together at each point in time. Pure functions, testable in Node.
 
-import { parseSeq, beatsOf, toMidi } from './theory.js';
+import { parseSeq, beatsOf, toMidi, parseLyrics } from './theory.js';
 
 // Returns { staves, moments, totalBeats }
 //   staves:  [{ clef, hand, events }] for sheet music (right hand first)
@@ -10,6 +10,11 @@ export function buildPractice(step) {
   const hands = [];
   if (step.rh) hands.push({ hand: 'R', clef: step.rhClef || clefFor(step.rh, 'treble'), events: parseSeq(step.rh, { hand: 'R' }) });
   if (step.lh) hands.push({ hand: 'L', clef: step.lhClef || clefFor(step.lh, 'bass'), events: parseSeq(step.lh, { hand: 'L' }) });
+
+  // Lyrics belong to the melody (the right hand, or the only hand), one
+  // syllable per note as played, so a repeat can have new words.
+  const lyrics = step.lyrics ? parseLyrics(step.lyrics) : null;
+  let sung = 0;
 
   const byBeat = new Map();
   let totalBeats = 0;
@@ -28,8 +33,10 @@ export function buildPractice(step) {
         last = ev.midis.map((midi, k) => ({
           midi, name: ev.notes[k], finger: ev.fingers[k] || null, hand: h.hand, staff, index, beats: len,
           ...(ev.staccato && { staccato: true }), ...(ev.marks && { marks: ev.marks }),
+          ...(lyrics && staff === 0 && k === 0 && { lyric: sung }),
         }));
         byBeat.get(key).push(...last);
+        if (lyrics && staff === 0) sung++;
       } else {
         last = [];
       }
@@ -44,7 +51,32 @@ export function buildPractice(step) {
     // One moment containing every note; they can be played in any order.
     moments = [{ beat: 0, items: moments.flatMap((m) => m.items), anyOrder: true }];
   }
-  return { staves: hands.map(({ hand, clef, events }) => ({ hand, clef, events })), moments, totalBeats };
+  return { staves: hands.map(({ hand, clef, events }) => ({ hand, clef, events })), moments, totalBeats, lyrics, syllables: sung };
+}
+
+// The lyric line to show at a moment: its syllables, and which one is sung now.
+export function lyricLine(lyrics, moments, at) {
+  if (!lyrics?.length) return null;
+  let idx = -1;
+  for (let i = Math.min(at, moments.length - 1); i >= 0 && idx < 0; i--) {
+    const it = moments[i].items.find((x) => x.lyric != null);
+    if (it) idx = it.lyric;
+  }
+  if (idx < 0) idx = 0;
+  idx = Math.min(idx, lyrics.length - 1);
+  while (idx > 0 && lyrics[idx].hold) idx--;
+  const line = lyrics[idx].line;
+  return { words: lyrics.map((l, i) => ({ ...l, i })).filter((l) => l.line === line && !l.hold), now: idx };
+}
+
+// The line as HTML: sung syllables dim, the current one highlighted.
+export function lyricHTML(line) {
+  if (!line) return '';
+  return line.words.map((w) => {
+    const joined = w.text.endsWith('-');
+    const cls = w.i === line.now ? 'now' : w.i < line.now ? 'sung' : '';
+    return `<span class="${cls}">${w.text.replace(/-$/, '').replace(/[<>&]/g, '')}</span>${joined ? '' : ' '}`;
+  }).join('').trim();
 }
 
 // Event indexes in the order they're played: music between repeat signs

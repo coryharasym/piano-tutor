@@ -13,7 +13,7 @@ const performance = (step) => ({
 });
 
 // ---------------------------------------------------------------- Unit 1
-const DOXOLOGY = 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1 C4/q/1 D4/q/2 E4/w/3';
+const DOXOLOGY = 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1 C4/h/1 D4/h/2 E4/h/3';
 
 // ---------------------------------------------------------------- Unit 2
 const JOY_A = 'E4/q/3 E4/q/3 F4/q/4 G4/q/5 G4/q/5 F4/q/4 E4/q/3 D4/q/2 C4/q/1 C4/q/1 D4/q/2 E4/q/3 E4/q./3 D4/8/2 D4/h/2';
@@ -85,17 +85,18 @@ const CLASSIC = [
         t: 'read', title: 'Your first recital',
         body: `<p>Every unit ends with a <b>recital</b>: a piece to practice and then perform from start to finish, with no hints from the keyboard.</p>
         <p>Your first piece is the opening line of the <b>Doxology</b> ("Praise God, from whom all blessings flow"). Its tune, called <b>Old Hundredth</b>, was published in Geneva in 1551 and has been sung ever since.</p>
-        <p>The first half walks <b>down</b> the white keys from Middle C: C C B A G. Then your thumb hops back to Middle C and walks <b>up</b>: C D E.</p>`,
+        <p>The first half walks <b>down</b> the white keys from Middle C: C C B A G. Then your thumb hops back to Middle C and walks <b>up</b>: C D E.</p>
+        <p>This is the start of a longer journey: each unit adds a little more of the Doxology, until you can play the whole hymn with both hands.</p>`,
       },
       {
         t: 'play', title: 'Walking down',
         say: 'Put finger 4 on Middle C. Walk down: C C B A G, ending on your thumb.',
-        rh: 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1', range: ['E3', 'G4'], keyLabels: 'all', names: true, reps: 2,
+        rh: 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1', lyrics: 'Praise God, from whom all', range: ['E3', 'G4'], keyLabels: 'all', names: true, reps: 2,
       },
       {
         t: 'play', title: 'Walking up',
         say: 'Move your thumb to Middle C and walk up: C D E. Hold the last note.',
-        rh: 'C4/q/1 D4/q/2 E4/h/3', range: ['E3', 'G4'], keyLabels: 'all', names: true, reps: 2,
+        rh: 'C4/h/1 D4/h/2 E4/h/3', lyrics: 'bless- ings flow', range: ['E3', 'G4'], keyLabels: 'all', names: true, reps: 2,
       },
       {
         t: 'play', title: 'Dress rehearsal',
@@ -620,6 +621,82 @@ const MORE = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------- Words
+// The hymn words under each melody, one syllable per note: "-" joins a word
+// to the next syllable, "_" holds the syllable over another note, "/" starts
+// a new line, and a closing "+" runs a section on into the next. A melody that comes back with new words lists each verse in turn.
+const JOY_W = [
+  'Joy- ful, joy- ful, we a- dore Thee, / God of glo- ry, Lord of love;',
+  ['Hearts un- fold like flow\'rs be- fore Thee, / op\'n- ing to the sun a- bove.',
+    'Giv- er of im- mor- tal glad- ness, / fill us with the light of day!'],
+  'Melt the clouds of sin and _ sad- ness, / drive the _ dark of doubt away;',
+];
+const WORDS = [
+  [DOXOLOGY, 'Praise God, from whom all bless- ings flow;'],
+  [JOY_A, JOY_W[0]], [JOY_A2, JOY_W[1]], [JOY_B, JOY_W[2]],
+  [FIN_A, JOY_W[0]], [FIN_A2, JOY_W[1]], [FIN_B, 'Melt the clouds of sin and _ sad- ness, / drive the _ dark of doubt a- way;'],
+  [GRACE_1, 'A- ma- zing _ grace! How sweet the sound that +'],
+  [GRACE_2, 'saved a _ wretch like me!'],
+  [GRACE_3, 'I once was _ lost, but now am found; / was blind, but +'],
+  [GRACE_4, 'now I _ see. _ _'],
+  [HARK_1, 'Hark! the her- ald an- gels sing, _ / Glo- ry to the new- born King;'],
+  [HARK_2, 'peace on earth and mer- cy mild, _ / God and sin- ners rec- on- ciled!'],
+  [HARK_3, 'Joy- ful, all ye na- tions, rise, _ / join the tri- umph of the skies; _'],
+  [HARK_4, 'with th\'an- gel- ic host pro- claim, / Christ is _ born in Beth- le- hem!'],
+  [HARK_5, 'Hark! the her- ald an- gels sing, / Glo- ry _ to the new- born King!'],
+  [NIGHT_RH[0], 'Si- lent night, _ ho- ly night, _'],
+  [NIGHT_RH[1], 'all is calm, all is bright,'],
+  [NIGHT_RH[2], ['round yon vir- gin moth- er and child, _', 'Ho- ly in- fant so ten- der and mild,']],
+  [NIGHT_RH[4], 'sleep in heav- en- ly peace, _'],
+  [NIGHT_RH[5], 'sleep in heav- en _ ly peace.'],
+  [SLANE_1, 'Be Thou my _ vi- sion, O _ Lord of my heart; _ _ / naught be all else to me, save that Thou art. / Thou +'],
+  [SLANE_2, 'my best _ thought, _ by day or by night, _ _ / wak- ing or sleep- ing, _ Thy pres- _ ence my light. _'],
+  [NICAEA_1, 'Ho- ly, ho- ly, ho- ly! Lord God Al- might- y! _ / Ear- ly in the morn- ing our song shall rise to _ Thee;'],
+  [NICAEA_2, 'Ho- ly, ho- ly, ho- ly! Mer- ci- ful and might- y! _ / God in three Per- sons, bless- ed Trin- i- ty!'],
+  [JLM_V12, 'Je- sus loves me! this I know, / for the Bi- ble tells me so;'],
+  [JLM_V34, 'Lit- tle ones to Him be- long; / they are weak, but He is strong.'],
+  [JLM_CH, 'Yes, Je- sus loves me! / Yes, Je- sus loves me! / Yes, Je- sus loves me! / The Bi- ble tells me so.'],
+  [SAINTS_1, 'Oh, when the saints / go march- ing in, / Oh, when the saints go march- ing in,'],
+  [SAINTS_2, 'Lord, I want to be in that num- ber, / when the saints go march- ing in.'],
+  [WORLD_1, 'Joy to the world! the Lord is come; let +'],
+  [WORLD_2, 'earth re- ceive her King; / let ev- ery heart pre- pare him room, / and heav\'n and na- ture sing, _ _ / and +'],
+  [WORLD_3, 'heav\'n and na- ture _ sing, _ and / heav\'n and na- ture _ sing, _ _ / and heav\'n, and heav\'n, and na- ture sing. _ _'],
+  [MANGER_1, 'A- way in a man- ger, no crib for a bed, / the lit- tle Lord Je- sus laid down his sweet head.'],
+  [MANGER_2, 'The stars in the bright sky looked down where he lay, / the lit- tle Lord Je- sus, a- sleep on the hay.'],
+  [FAITHFUL_V, 'O come, all ye faith- ful, / joy- ful and tri- um- phant, / O come ye, O come ye to Beth- le- hem! _ _'],
+  [FAITHFUL_M, 'Come and be- hold him, / born the King of an- _ gels; O +'],
+  [FAITHFUL_R, 'come, let us a- dore him, O / come, let us a- dore him, O / come, let us a- dore him, / Christ the Lord. _ _'],
+  [EMM_1, 'O come, O come, Em- man- _ u- _ el, / and ran- som cap- tive _ Is- ra- _ el,'],
+  [EMM_2, 'that mourns in lone- ly ex- ile _ here, / un- til the Son of God _ ap- _ pear.'],
+  [EMM_R, 'Re- joice! Re- joice! Em- man- _ u- _ el / shall come to thee, O _ Is- ra- _ el.'],
+];
+
+// The words for a melody made of the sections above, or nothing if any part
+// of it isn't a hymn tune (a left-hand drill, say).
+function wordsFor(seq) {
+  const seen = new Map();
+  const words = [];
+  let rest = seq;
+  while (rest) {
+    const hit = WORDS.find(([tune]) => rest === tune || rest.startsWith(`${tune} `));
+    if (!hit) return null;
+    const verses = [].concat(hit[1]);
+    const n = seen.get(hit[0]) || 0;
+    seen.set(hit[0], n + 1);
+    // A section that ends on a pickup ("+") runs on into the next line.
+    const verse = verses[Math.min(n, verses.length - 1)];
+    words.push(verse.endsWith(' +') ? verse.slice(0, -2) : `${verse} /`);
+    rest = rest.slice(hit[0].length).trimStart();
+  }
+  return words.join(' ').replace(/ \/$/, '');
+}
+[...CLASSIC, ...MORE].forEach((p) => p.steps.forEach((s) => {
+  if (s.t === 'play' && s.rh && !s.lyrics) {
+    const words = wordsFor(s.rh);
+    if (words) s.lyrics = words;
+  }
+}));
 
 // ---------------------------------------------------------------- Pieces and recitals
 // Pieces from the first units say which unit by `level`; later ones name their unit.

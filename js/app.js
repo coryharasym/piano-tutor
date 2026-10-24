@@ -5,11 +5,11 @@ import { piano } from './audio.js';
 import { listener } from './listen.js';
 import { Keyboard } from './keyboard.js';
 import { renderStaff } from './staff.js';
-import { buildPractice, matches } from './practice.js';
+import { buildPractice, matches, lyricLine, lyricHTML } from './practice.js';
 import { parseSeq, toMidi, midiToName, prettyName } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
-import { mountPlayAlong } from './playalong.js';
+import { mountPlayAlong, SPEEDS } from './playalong.js';
 import { mountPrint, printOne, songbook } from './print.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -206,6 +206,7 @@ function showSettings() {
     <label class="row"><span>Piano volume</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-vol></label>
     <label class="row"><span>Show note names on keys<small>When a lesson allows it</small></span><input type="checkbox" ${s.keyNames ? 'checked' : ''} data-names></label>
     <label class="row"><span>Show R and L with finger numbers<small>Which hand plays each note, beside its finger number</small></span><input type="checkbox" ${s.handLabels ? 'checked' : ''} data-hands></label>
+    <label class="row"><span>Show song words<small>The lyrics of hymns and songs, as you play</small></span><input type="checkbox" ${s.lyrics ? 'checked' : ''} data-lyrics></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
     <button class="text-btn danger" data-reset>Reset all progress</button>
@@ -217,6 +218,7 @@ function showSettings() {
   $('[data-vol]', dlg).addEventListener('input', (e) => { store.setting('volume', +e.target.value); piano.setVolume(+e.target.value); });
   $('[data-names]', dlg).addEventListener('change', (e) => { store.setting('keyNames', e.target.checked); route(); });
   $('[data-hands]', dlg).addEventListener('change', (e) => { store.setting('handLabels', e.target.checked); route(); });
+  $('[data-lyrics]', dlg).addEventListener('change', (e) => { store.setting('lyrics', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
   $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
   $('[data-reset]', dlg).addEventListener('click', () => {
@@ -535,7 +537,7 @@ function renderPlay(step, ctx) {
       <p class="say">${step.say}</p>
       <div class="play-tools">
         <span class="reps"></span>
-        ${step.anyNote || step.noDemo ? '' : `<button class="pill" data-demo>${icons.ear}<span>Listen</span></button>`}
+        ${step.anyNote || step.noDemo ? '' : `<span class="listen-group"><button class="pill" data-demo>${icons.ear}<span>Listen</span></button><button class="pill speed" data-speed aria-label="Listening speed"></button></span>`}
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
         ${step.song ? `<button class="icon-btn" data-print aria-label="Print sheet music">${icons.print}</button>` : ''}
         ${step.hint === false ? `<button class="pill" data-hint>${icons.bulb}<span>Show me</span></button>` : ''}
@@ -543,6 +545,7 @@ function renderPlay(step, ctx) {
       </div>
     </div>
     <div class="music"></div>
+    ${practice.lyrics && store.setting('lyrics') ? '<p class="lyric-line"></p>' : ''}
     <div class="feedback" aria-live="polite"></div>
   </div>`);
   ctx.stage.appendChild(el);
@@ -576,6 +579,8 @@ function renderPlay(step, ctx) {
     // While the demo plays, the music follows it instead of the player.
     const at = demoAt ?? mi;
     const fin = demoAt == null && finished;
+    const lyricEl = $('.lyric-line', el);
+    if (lyricEl) lyricEl.innerHTML = lyricHTML(lyricLine(practice.lyrics, moments, fin ? moments.length - 1 : at));
     if (step.staff) {
       const cur = moments[at]?.items[0];
       const done = new Set();
@@ -739,6 +744,18 @@ function renderPlay(step, ctx) {
   // ---- demo playback
   let demo = null;
   const demoBtn = $('[data-demo]', el);
+  // Listen can be slowed down or sped up too.
+  let listenSpeed = store.setting('listenSpeed') || 1;
+  const speedBtn = $('[data-speed]', el);
+  const paintSpeed = () => { if (speedBtn) speedBtn.textContent = SPEEDS.find(([v]) => v === listenSpeed)?.[1] || '1×'; };
+  speedBtn?.addEventListener('click', () => {
+    const i = SPEEDS.findIndex(([v]) => v === listenSpeed);
+    listenSpeed = SPEEDS[(i + 1) % SPEEDS.length][0];
+    store.setting('listenSpeed', listenSpeed);
+    paintSpeed();
+    if (demo) { stopDemo(); demoBtn.click(); }
+  });
+  paintSpeed();
   const stopDemo = () => {
     demo?.cancel(); demo = null;
     demoBtn?.classList.remove('active');
@@ -749,7 +766,7 @@ function renderPlay(step, ctx) {
     if (demo) return stopDemo();
     demoBtn.classList.add('active');
     demoBtn.querySelector('span').textContent = 'Stop';
-    demo = playDemo(practice, step.tempo || 80, step.metronome || step.song, (i) => {
+    demo = playDemo(practice, (step.tempo || 80) * listenSpeed, step.metronome || step.song, (i) => {
       demoAt = i >= 0 ? i : null;
       drawMusic();
       if (i >= 0) moments[i].items.forEach((it) => kb.flash(it.midi, 'press'));

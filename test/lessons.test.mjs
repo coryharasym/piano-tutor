@@ -72,8 +72,9 @@ for (const lesson of checks) {
         totals.push(beat);
       }
       if (totals.length === 2 && Math.abs(totals[0] - totals[1]) > 1e-6) fail(where, `hands differ in length: rh ${totals[0]} vs lh ${totals[1]}`);
-      const { moments } = buildPractice(step);
+      const { moments, lyrics, syllables } = buildPractice(step);
       if (!moments.length) fail(where, 'nothing to play');
+      if (lyrics && lyrics.length !== syllables) fail(where, `${lyrics.length} syllables of lyrics for ${syllables} melody notes`);
     });
   }
 }

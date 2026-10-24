@@ -3,7 +3,7 @@
 //   Flow mode: the music keeps moving; you get a score for notes played on time.
 
 import { Keyboard } from './keyboard.js';
-import { buildPractice, matches } from './practice.js';
+import { buildPractice, matches, lyricLine, lyricHTML } from './practice.js';
 import { listener } from './listen.js';
 import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
@@ -15,8 +15,10 @@ const WINDOW = 0.38;        // seconds either side of a note that still count as
 const MIC_LATENCY = 0.12;   // the mic hears a note a little after it's played
 const COUNT_IN = 4;         // beats before the first note
 
+export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'], [1.5, '1½×']];
+
 export function mountPlayAlong(root, step, { micButton, onExit }) {
-  const { moments } = buildPractice(step);
+  const { moments, lyrics } = buildPractice(step);
   const items = moments.flatMap((m, mi) => m.items.map((it) => ({ ...it, beat: m.beat, moment: mi, state: 'pending' })));
   const total = items.length;
   const lastBeat = Math.max(...items.map((it) => it.beat + it.beats));
@@ -35,7 +37,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
         <button data-v="wait">Wait</button><button data-v="flow">Flow</button>
       </div>
       <div class="seg" data-speed role="group" aria-label="Speed">
-        <button data-v="0.5">½×</button><button data-v="0.75">¾×</button><button data-v="1">1×</button>
+        ${SPEEDS.map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('')}
       </div>
       <div class="top-actions"></div>
       <button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>
@@ -45,6 +47,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       <div class="fall-hud"><span class="count"></span><span class="score"></span></div>
       <div class="fall-msg"></div>
     </section>
+    ${lyrics && store.setting('lyrics') ? '<p class="lyric-line" aria-live="off"></p>' : ''}
     <div class="kb-wrap"></div>`;
   root.replaceChildren(el);
   el.querySelector('.top-actions').appendChild(micButton());
@@ -139,8 +142,21 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       if (beat > lastBeat + 0.5 || (prefs.mode === 'wait' && nextMoment >= moments.length && beat >= moments[moments.length - 1].beat)) finish();
     }
     updateTargets();
+    updateLyric();
     draw();
     raf = requestAnimationFrame(tick);
+  }
+
+  // The words: the line being sung, with the current syllable lit.
+  const lyricEl = el.querySelector('.lyric-line');
+  let lyricKey = '';
+  function updateLyric() {
+    if (!lyricEl) return;
+    let at = prefs.mode === 'wait' ? nextMoment : moments.findIndex((m) => m.beat > beat + 0.05) - 1;
+    if (at < 0) at = prefs.mode === 'wait' ? 0 : moments.length - 1;
+    if (beat < 0) at = 0;
+    const html = lyricHTML(lyricLine(lyrics, moments, at));
+    if (html !== lyricKey) { lyricKey = html; lyricEl.innerHTML = html; }
   }
 
   let targetKey = '';
@@ -165,7 +181,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       : (wrong === 0 ? 'Perfect!' : 'Well done!');
     msg.className = 'fall-msg show';
     msg.innerHTML = `<div class="card"><h2>${praise}</h2><p>${line}.</p>
-      ${prefs.mode === 'wait' ? '<p class="muted small">Ready for more? Try Flow mode, where the music keeps moving.</p>' : pct >= 90 && prefs.speed < 1 ? '<p class="muted small">Try it a little faster next time.</p>' : ''}
+      ${prefs.mode === 'wait' ? '<p class="muted small">Ready for more? Try Flow mode, where the music keeps moving.</p>' : pct >= 90 && prefs.speed < 1.5 ? '<p class="muted small">Try it a little faster next time.</p>' : ''}
       <div class="sheet-actions"><button class="text-btn" data-back>Back to lesson</button><button class="btn primary" data-again>Play again</button></div></div>`;
     msg.querySelector('[data-again]').addEventListener('click', reset);
     msg.querySelector('[data-back]').addEventListener('click', onExit);

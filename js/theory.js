@@ -109,3 +109,20 @@ export function parseSeq(str, defaults = {}) {
 }
 
 export const beatsOf = (dur) => DUR_BEATS[dur] ?? 1;
+
+/*
+ * Lyrics: one syllable per melody note, in written order (rests and tied
+ * notes take none).
+ *   "Praise God from whom all bless- ings flow / Praise Him…"
+ * A syllable ending in "-" joins the next one into a word, "_" holds the
+ * previous syllable over another note, and "/" starts a new line.
+ */
+export function parseLyrics(str) {
+  const out = [];
+  let line = 0;
+  for (const tok of str.trim().split(/\s+/)) {
+    if (tok === '/') { line++; continue; }
+    out.push(tok === '_' ? { text: '', hold: true, line } : { text: tok, line });
+  }
+  return out;
+}

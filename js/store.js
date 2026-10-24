@@ -12,6 +12,7 @@ const defaults = {
     anyOctave: true, // accept the right note in a neighbouring octave (mic only)
     keyNames: true,  // show note names on keys where the lesson allows
     handLabels: true, // "R" or "L" beside each finger number
+    lyrics: true,     // show the words of songs as you play
   },
 };
 
