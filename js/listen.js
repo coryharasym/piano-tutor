@@ -14,6 +14,9 @@ class Listener {
     this.muteUntil = 0;
     this.recent = []; // [{midi, t}] for arpeggiated chord checks
     this.timer = null;
+    this.tuning = 0; // semitones the player's piano (or this phone) sounds sharp
+    this.onRaw = new Set(); // unrounded, untuned pitch readings, for tuning
+
 
     // Ignore the mic briefly while the app itself is making sound,
     // so the demo playback isn't mistaken for the player.
@@ -26,10 +29,17 @@ class Listener {
 
   async start() {
     if (this.active) return true;
-    const ctx = await piano.unlock();
+    await piano.unlock();
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
+    // The mic gets its own audio context, made after the mic is on. iPhones
+    // switch the hardware sample rate when recording starts; a context made
+    // earlier keeps the old rate and hears every note about a semitone off.
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    if (ctx.state === 'suspended') await ctx.resume();
+    this.ctx = ctx;
     const src = ctx.createMediaStreamSource(this.stream);
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 4096;
@@ -47,7 +57,12 @@ class Listener {
     clearInterval(this.timer);
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
+    this.ctx?.close();
+    this.ctx = null;
   }
+
+  // The sample rate, nudged so the player's tuning reads as concert pitch.
+  get rate() { return this.analyser.context.sampleRate * 2 ** (-this.tuning / 12); }
 
   tick() {
     const a = this.analyser;
@@ -58,7 +73,9 @@ class Listener {
       this.tracker.push({ level: 0, pitch: null });
       return;
     }
-    const pitch = level > 0.003 ? detectPitch(this.time, a.context.sampleRate, { maxFreq: 2400 }) : null;
+    const raw = level > 0.003 ? detectPitch(this.time, a.context.sampleRate, { maxFreq: 2400 }) : null;
+    if (raw && raw.clarity > 0.9) this.onRaw.forEach((fn) => fn(69 + 12 * Math.log2(raw.freq / 440), level));
+    const pitch = raw && { ...raw, freq: raw.freq * 2 ** (-this.tuning / 12) };
     const midi = this.tracker.push({ level, pitch });
     if (midi != null) {
       const now = performance.now();
@@ -77,7 +94,7 @@ class Listener {
     if (pcs.every((pc) => seen.has(pc))) return true;
     if (performance.now() < this.muteUntil) return false;
     this.analyser.getFloatFrequencyData(this.freq);
-    const c = chroma(this.freq, this.analyser.context.sampleRate, this.analyser.fftSize);
+    const c = chroma(this.freq, this.rate, this.analyser.fftSize);
     const sorted = [...c].sort((x, y) => y - x);
     const cutoff = Math.max(0.18, sorted[pcs.length + 1] ?? 0);
     return rms(this.time) > 0.01 && pcs.every((pc) => c[pc] >= cutoff);

@@ -205,7 +205,7 @@ li { margin-bottom: .25em; }
   box-shadow: inset 0 -5px 0 #ece8df; padding-bottom: 10px;
 }
 .key.black {
-  left: calc((var(--x) + 1) * var(--kw) - var(--kw) * .3); width: calc(var(--kw) * .6); height: 60%; z-index: 2;
+  left: calc(var(--x) * var(--kw) - var(--kw) * .3); width: calc(var(--kw) * .6); height: 60%; z-index: 2;
   background: linear-gradient(#3a4547, #1d2729); border-radius: 0 0 6px 6px; box-shadow: inset 0 -4px 0 #0f1516, 0 2px 3px rgba(0, 0, 0, .25);
   padding-bottom: 8px;
 }
@@ -365,3 +365,5 @@ li { margin-bottom: .25em; }
 .feedback .pill.again { height: 30px; margin-left: 6px; vertical-align: middle; color: var(--ink); }
 .feedback .pill.again .icon { width: 16px; height: 16px; }
 .sheet-actions .btn .icon { width: 16px; height: 16px; vertical-align: -3px; }
+.tune-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 4px; }
+.tune-bar i { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .2s var(--ease); }

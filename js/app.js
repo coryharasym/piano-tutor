@@ -16,6 +16,7 @@ const h = (html) => { const t = document.createElement('template'); t.innerHTML 
 
 piano.setVolume(store.setting('volume'));
 Object.entries(store.data.recitals || {}).forEach(([unit, piece]) => chooseRecital(unit, piece));
+listener.tuning = store.setting('tuning') || 0;
 
 // ---------------------------------------------------------------- routing
 window.addEventListener('hashchange', route);
@@ -180,6 +181,7 @@ function showSettings() {
     <label class="row"><span>Piano volume</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-vol></label>
     <label class="row"><span>Show note names on keys<small>When a lesson allows it</small></span><input type="checkbox" ${s.keyNames ? 'checked' : ''} data-names></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
+    <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
     <button class="text-btn danger" data-reset>Reset all progress</button>
     <p class="muted small">Progress is saved on this device. Piano sound: Salamander Grand Piano by Alexander Holm (CC BY 3.0).</p>
   </div></div>`);
@@ -189,10 +191,67 @@ function showSettings() {
   $('[data-vol]', dlg).addEventListener('input', (e) => { store.setting('volume', +e.target.value); piano.setVolume(+e.target.value); });
   $('[data-names]', dlg).addEventListener('change', (e) => { store.setting('keyNames', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
+  $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
   $('[data-reset]', dlg).addEventListener('click', () => {
     if (confirm('Clear all lesson progress on this device?')) { store.reset(); close(); route(); }
   });
   document.body.appendChild(dlg);
+}
+
+function tuningText(t = listener.tuning) {
+  const cents = Math.round(t * 100);
+  if (Math.abs(cents) < 10) return 'The mic expects a standard-tuned piano';
+  return `Adjusted for a piano ${Math.abs(cents)} cents ${cents < 0 ? 'flat' : 'sharp'} (100 cents = 1 note)`;
+}
+
+// Listen to the player's Middle C and learn how far off it reads, so notes
+// are named correctly on a piano that's out of tune (or a phone that hears
+// everything shifted).
+async function showTuner() {
+  const dlg = h(`<div class="sheet-backdrop"><div class="sheet tuner" role="dialog" aria-label="Tune to my piano">
+    <div class="sheet-head"><h2>Tune to my piano</h2><button class="icon-btn" data-close aria-label="Close">${icons.x}</button></div>
+    <p data-msg>Play <b>Middle C</b> on your piano, firmly, a few times. Let each note ring.</p>
+    <div class="tune-bar"><i></i></div>
+    <div class="sheet-actions">
+      <button class="text-btn" data-zero>Reset to standard</button>
+      <button class="btn primary" data-done>Done</button>
+    </div>
+  </div></div>`);
+  const msg = $('[data-msg]', dlg), bar = $('.tune-bar i', dlg);
+  const readings = [];
+  const NEED = 30;
+  const onRaw = (raw) => {
+    if (readings.length >= NEED) return;
+    let d = raw - 60;
+    d -= 12 * Math.round(d / 12); // any octave of C counts
+    readings.push(d);
+    bar.style.transform = `scaleX(${readings.length / NEED})`;
+    if (readings.length < NEED) return;
+    const sorted = [...readings].sort((a, b) => a - b);
+    const offset = sorted[Math.floor(sorted.length / 2)];
+    listener.tuning = offset;
+    store.setting('tuning', offset);
+    const cents = Math.round(offset * 100);
+    msg.innerHTML = Math.abs(cents) < 10
+      ? '<b>All set.</b> Your Middle C reads correctly, so no change was needed.'
+      : `<b>All set.</b> Your Middle C read ${Math.abs(cents)} cents ${cents < 0 ? 'low' : 'high'} (100 cents is one note). The app now adjusts for it, so play a C to check it shows as C.`;
+    piano.chime();
+  };
+  const close = () => { listener.onRaw.delete(onRaw); dlg.remove(); };
+  $('[data-close]', dlg).addEventListener('click', close);
+  $('[data-done]', dlg).addEventListener('click', close);
+  $('[data-zero]', dlg).addEventListener('click', () => {
+    listener.tuning = 0; store.setting('tuning', 0);
+    msg.innerHTML = 'Back to standard tuning.';
+  });
+  document.body.appendChild(dlg);
+  disposers.push(close);
+  try {
+    await listener.start();
+    listener.onRaw.add(onRaw);
+  } catch {
+    msg.textContent = 'The microphone is off. Allow microphone access for this site, then try again.';
+  }
 }
 
 // ---------------------------------------------------------------- free play
