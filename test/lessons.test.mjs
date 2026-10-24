@@ -46,7 +46,14 @@ for (const lesson of checks) {
         if (!step[hand]) continue;
         const evs = parseSeq(step[hand]);
         let beat = 0, barBeat = 0, cap = step.pickup || perBar;
+        let prev = null;
         for (const ev of evs) {
+          if (ev.bar) {
+            if (ev.repeat && Math.abs(barBeat) > 1e-6) fail(where, `${hand} repeat sign in the middle of a bar`);
+            continue;
+          }
+          if (ev.tie && (!prev || prev.rest || prev.midis.join() !== ev.midis.join())) fail(where, `${hand} tie to ${ev.notes} doesn't follow the same note`);
+          prev = ev;
           if (!ev.rest) {
             ev.midis.forEach((m) => {
               const [lo, hi] = (step.range || ['C3', 'C5']).map(toMidi);

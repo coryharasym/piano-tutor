@@ -202,5 +202,29 @@ export default {
         },
       ],
     },
+    {
+      id: 'six-eight',
+      title: '6/8 time',
+      summary: 'Six quick beats, felt as two big ones.',
+      steps: [
+        {
+          t: 'read', title: 'Two big beats',
+          staffFig: { staves: [{ clef: 'treble', seq: 'C4/8 D4/8 E4/8 F4/8 E4/8 D4/8 C4/q. r/q.' }], time: '6/8', names: true },
+          body: `<p>In <b>6/8</b> time there are six eighth notes in each bar, grouped in threes: "<b>1</b> 2 3 <b>4</b> 5 6". It feels like <b>two big beats</b>, each split into three. That gives it a gentle rocking or rolling feel.</p>
+          <p>A <b>dotted quarter note</b> fills one big beat (three eighths), and a <b>dotted half note</b> fills the whole bar. Silent Night, coming up in your recital, is in 6/8.</p>`,
+        },
+        {
+          t: 'quiz', q: 'Listen. Does this rock in twos (6/8) or march in fours (4/4)?', listen: 'C4/q. E4/q. G4/q. E4/q. C4/8 D4/8 E4/8 F4/8 E4/8 D4/8 C4/h.', tempo: 100,
+          options: ['Rocks in two (6/8)', 'Marches in four (4/4)'], answer: 0,
+          explain: 'You can hear the long-short groups of three. That lilt is 6/8.',
+        },
+        {
+          t: 'play', title: 'Row, Row, Row Your Boat', song: true, time: '6/8',
+          say: 'Count "1 2 3 4 5 6" in each bar. In "merrily, merrily", move your hand freely to reach the high C.',
+          rh: 'C4/q./1 C4/q./1 C4/q/1 D4/8/2 E4/q./3 E4/q/3 D4/8/2 E4/q/3 F4/8/4 G4/h./5 C5/8 C5/8 C5/8 G4/8 G4/8 G4/8 E4/8 E4/8 E4/8 C4/8 C4/8 C4/8 G4/q/5 F4/8/4 E4/q/3 D4/8/2 C4/h./1',
+          staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 120,
+        },
+      ],
+    },
   ],
 };

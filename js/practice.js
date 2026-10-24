@@ -15,15 +15,23 @@ export function buildPractice(step) {
   let totalBeats = 0;
   hands.forEach((h, staff) => {
     let beat = 0;
-    h.events.forEach((ev, index) => {
-      if (ev.bar) return;
+    let last = []; // items of the previous note, for ties
+    playOrder(h.events).forEach((index) => {
+      const ev = h.events[index];
       const len = beatsOf(ev.dur);
-      if (!ev.rest) {
+      if (ev.tie) {
+        // A tied note isn't played again: the previous note just lasts longer.
+        last.forEach((it) => { it.beats += len; });
+      } else if (!ev.rest) {
         const key = Math.round(beat * 1000) / 1000;
         if (!byBeat.has(key)) byBeat.set(key, []);
-        ev.midis.forEach((midi, k) => byBeat.get(key).push({
+        last = ev.midis.map((midi, k) => ({
           midi, name: ev.notes[k], finger: ev.fingers[k] || null, hand: h.hand, staff, index, beats: len,
+          ...(ev.staccato && { staccato: true }), ...(ev.marks && { marks: ev.marks }),
         }));
+        byBeat.get(key).push(...last);
+      } else {
+        last = [];
       }
       beat += len;
     });
@@ -37,6 +45,19 @@ export function buildPractice(step) {
     moments = [{ beat: 0, items: moments.flatMap((m) => m.items), anyOrder: true }];
   }
   return { staves: hands.map(({ hand, clef, events }) => ({ hand, clef, events })), moments, totalBeats };
+}
+
+// Event indexes in the order they're played: music between repeat signs
+// (or from the start, when there's no |:) is played twice.
+export function playOrder(events) {
+  const order = [];
+  let from = 0;
+  events.forEach((ev, i) => {
+    if (ev.repeat === 'start') from = order.length;
+    else if (ev.repeat === 'end') order.push(...order.slice(from));
+    else if (!ev.bar) order.push(i);
+  });
+  return order;
 }
 
 // A single hand's part can still sit on the "other" clef (e.g. right hand

@@ -5,11 +5,52 @@ const pos = (notes, hand, caption, from, to) => F.kbFigure({
   marks: notes.map((n, i) => ({ note: n, hand, label: String(hand === 'R' ? i + 1 : 5 - i), name: n.includes('#') || n.includes('b') ? n.replace(/\d/, '').replace('#', '♯').replace('b', '♭') : '' })),
 });
 
+// A one-note "what is this note?" quiz.
+const nameQuiz = (clef, note, options, answer, explain) => ({
+  t: 'quiz', q: 'What is this note?', staffFig: { staves: [{ clef, seq: `${note}/w` }] },
+  options, answer, explain,
+});
+
 export default {
   id: 'u4',
   title: 'Moving around',
   blurb: 'New positions, sharps and flats, thumb-under, and your first scales.',
   lessons: [
+    {
+      id: 'landmarks',
+      title: 'Landmark notes and ledger lines',
+      summary: 'Signposts on the staff, and notes above and below it.',
+      steps: [
+        {
+          t: 'read', title: 'Landmark notes',
+          staffFig: { staves: [{ clef: 'treble', seq: 'C4/h G4/h C5/h r/h' }, { clef: 'bass', seq: 'r/h F3/h C3/h C4/h' }], names: true },
+          body: `<p>Instead of counting up from the bottom line every time, good readers learn a few <b>landmark notes</b> and read from the nearest one.</p>
+          <p>Treble <b>G</b> sits on the line the treble clef curls around. Bass <b>F</b> sits on the line between the bass clef's two dots. <b>Middle C</b> sits on a short line between the staves. Two more Cs make easy signposts: treble C in the <b>third space</b>, and bass C in the <b>second space</b>.</p>`,
+        },
+        {
+          t: 'play', title: 'Landmark hops',
+          say: 'Hop between the landmarks: Middle C, treble G, treble C. Use whatever fingers feel comfortable.',
+          rh: 'C4/q G4/q C5/q G4/q C4/q G4/q C5/h G4/q C5/q G4/q C4/q C4/w',
+          staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 80,
+        },
+        {
+          t: 'play', title: 'Bass landmarks',
+          say: 'Now your left hand: bass C, bass F, and up to Middle C.',
+          lh: 'C3/q F3/q C4/q F3/q C3/q F3/q C4/h F3/q C4/q F3/q C3/q C3/w',
+          staff: true, names: false, range: ['C3', 'C5'], keyLabels: 'c', tempo: 80,
+        },
+        {
+          t: 'read', title: 'Ledger lines',
+          staffFig: { staves: [{ clef: 'treble', seq: 'F5/h G5/h A5/h C6/h' }], names: true },
+          body: `<p>Music can go higher or lower than the five lines. Short extra lines called <b>ledger lines</b> extend the staff. Middle C is the one you already know.</p>
+          <p>Keep the pattern going: above the top line of the treble staff (F) comes G in the space just above, then <b>A on the first ledger line</b>, and C on the second. Below the bass staff it's the mirror: F hangs just under the bottom line, and <b>E sits on the first ledger line</b>.</p>`,
+        },
+        nameQuiz('treble', 'A5', ['F', 'A', 'C'], 1, 'One ledger line above the treble staff is A: top line F, space G, ledger line A.'),
+        nameQuiz('treble', 'C5', ['C', 'A', 'E'], 0, 'The third space of the treble staff is treble C, one of the landmarks. (It\'s the C in F-A-C-E.)'),
+        nameQuiz('bass', 'F3', ['G', 'D', 'F'], 2, 'The line between the bass clef\'s dots is F. That\'s why it\'s also called the F clef.'),
+        nameQuiz('bass', 'E2', ['E', 'G', 'C'], 0, 'One ledger line below the bass staff is E: bottom line G, space F, ledger line E.'),
+      ],
+    },
     {
       id: 'g-position',
       title: 'G position',

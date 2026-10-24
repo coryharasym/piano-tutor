@@ -1,10 +1,12 @@
-import { UNITS, HYMNS, findLesson, nextLesson, chooseRecital } from './lessons/index.js';
+import { UNITS, HYMNS, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
+import { PRACTICE_SHELF, buildDaily, buildDrill, dailyReady, today } from './daily.js';
+import { mountMetronome } from './metronome.js';
 import { piano } from './audio.js';
 import { listener } from './listen.js';
 import { Keyboard } from './keyboard.js';
 import { renderStaff } from './staff.js';
 import { buildPractice, matches } from './practice.js';
-import { parseSeq, beatsOf, toMidi, midiToName, prettyName } from './theory.js';
+import { parseSeq, toMidi, midiToName, prettyName } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
 import { mountPlayAlong } from './playalong.js';
@@ -23,7 +25,11 @@ window.addEventListener('hashchange', route);
 function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
+  // Daily practice is built for today; the drill gets fresh notes on each visit.
+  if (id === 'daily' && dailyReady(store.data.done)) addLesson(PRACTICE_SHELF, buildDaily(store.data.done));
+  if (id === 'drill' && (view !== 'lesson' || !findLesson('drill') || Number(step) === 0)) addLesson(PRACTICE_SHELF, buildDrill(store.data.done));
   if (view === 'lesson' && findLesson(id)) return showLesson(id, Number(step) || 0);
+  if (view === 'metronome') return showMetronome();
   if (view === 'free') return showFreePlay();
   if (view === 'play' && findLesson(id)) return showPlayAlong(id, Number(step) || 0);
   if (view === 'print' && printOne(id, Number(step) || 0)) return showPrint(id, Number(step) || 0);
@@ -126,6 +132,25 @@ function showHome() {
   </button>`));
   cont.firstChild.addEventListener('click', () => go(`#/lesson/${contLesson.id}/${resume ? resume.step : 0}`));
 
+  // Daily practice, and tools for practising on your own.
+  const ready = dailyReady(store.data.done);
+  const doneToday = store.data.practice?.[today()];
+  const daily = h(`<div class="practice-col">
+    <button class="daily-card ${doneToday ? 'done' : ''}" ${ready ? '' : 'disabled'}>
+      <span class="eyebrow">${doneToday ? `${icons.check} Done today` : 'Daily practice'}</span>
+      <span class="title">Today's practice</span>
+      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : 'Unlocks after "Right hand C position"'}</span>
+    </button>
+    <div class="tool-row">
+      <button class="pill" data-metronome>${icons.metronome}<span>Metronome</span></button>
+      <button class="pill" data-drill ${store.isDone('treble-reading') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
+    </div>
+  </div>`);
+  cont.appendChild(daily);
+  $('.daily-card', daily).addEventListener('click', () => go('#/lesson/daily/0'));
+  $('[data-metronome]', daily).addEventListener('click', () => go('#/metronome'));
+  $('[data-drill]', daily).addEventListener('click', () => go('#/lesson/drill/0'));
+
   const units = $('.units', el);
   UNITS.forEach((u, ui) => {
     const done = u.lessons.filter((l) => store.isDone(l.id)).length;
@@ -144,10 +169,10 @@ function showHome() {
 
   // Hymns shelf: every hymn in the course, in one place.
   const hymns = h(`<div class="unit hymns">
-    <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every recital piece, ready to practice any time. Levels match the units.</p></div>
+    <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every recital piece, ready to practice any time, marked with the unit it belongs to.</p></div>
     <button class="text-btn" data-songbook>${icons.print} Print the songbook</button></div>
     <div class="lesson-row"></div></div>`);
-  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Level ${l.level}`)));
+  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
   units.appendChild(hymns);
 
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
@@ -180,6 +205,7 @@ function showSettings() {
     <div class="sheet-head"><h2>Settings</h2><button class="icon-btn" data-close aria-label="Close">${icons.x}</button></div>
     <label class="row"><span>Piano volume</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-vol></label>
     <label class="row"><span>Show note names on keys<small>When a lesson allows it</small></span><input type="checkbox" ${s.keyNames ? 'checked' : ''} data-names></label>
+    <label class="row"><span>Show R and L with finger numbers<small>Which hand plays each note, beside its finger number</small></span><input type="checkbox" ${s.handLabels ? 'checked' : ''} data-hands></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
     <button class="text-btn danger" data-reset>Reset all progress</button>
@@ -190,6 +216,7 @@ function showSettings() {
   $('[data-close]', dlg).addEventListener('click', close);
   $('[data-vol]', dlg).addEventListener('input', (e) => { store.setting('volume', +e.target.value); piano.setVolume(+e.target.value); });
   $('[data-names]', dlg).addEventListener('change', (e) => { store.setting('keyNames', e.target.checked); route(); });
+  $('[data-hands]', dlg).addEventListener('change', (e) => { store.setting('handLabels', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
   $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
   $('[data-reset]', dlg).addEventListener('click', () => {
@@ -308,7 +335,7 @@ function showLesson(id, stepIndex) {
   keepAwake(true);
   const { lesson, unit } = findLesson(id);
   stepIndex = Math.max(0, Math.min(stepIndex, lesson.steps.length - 1));
-  store.setLast(id, stepIndex);
+  if (!lesson.daily) store.setLast(id, stepIndex);
   const step = lesson.steps[stepIndex];
   const isLast = stepIndex === lesson.steps.length - 1;
 
@@ -332,6 +359,10 @@ function showLesson(id, stepIndex) {
     if (lesson.recital && step.final && !stepDone) {
       toast('Play your recital all the way through to earn the ribbon.');
       return;
+    }
+    if (lesson.daily) {
+      if (id === 'daily') store.practised(today());
+      return celebrate(lesson, null, id === 'drill' ? () => go('#/lesson/drill/0') : step.t === 'play' ? () => route() : null);
     }
     store.markDone(id);
     // From the Hymns shelf, the next hymn; otherwise the next lesson in the course.
@@ -361,14 +392,29 @@ function showLesson(id, stepIndex) {
   else if (step.t === 'choose') renderChoose(step, lesson, ctx);
 }
 
+// "3 days in a row", counting back from today (or yesterday, if not yet today).
+function streakText() {
+  const days = store.data.practice || {};
+  const d = new Date();
+  if (!days[today(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days[today(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n > 1 ? `${n} days in a row. Keep it going!` : n === 1 ? 'Practised today. See you tomorrow!' : 'About ten minutes, from what you\'ve learned';
+}
+
+function showMetronome() {
+  keepAwake(true);
+  disposers.push(mountMetronome(app, { onBack: () => go('#/') }));
+}
+
 function celebrate(lesson, nxt, again) {
   const dlg = h(`<div class="sheet-backdrop celebrate"><div class="sheet">
     <div class="confetti">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
-    ${lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : '<h2>Lesson complete</h2>'}
-    <p class="muted">${lesson.title}</p>
+    ${lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : lesson.daily ? '<h2>Practice done</h2>' : '<h2>Lesson complete</h2>'}
+    <p class="muted">${lesson.id === 'daily' ? streakText() : lesson.title}</p>
     <div class="sheet-actions">
       <button class="text-btn" data-home>All lessons</button>
-      ${again ? `<button class="btn" data-again>${icons.restart} Play again</button>` : ''}
+      ${again ? `<button class="btn" data-again>${icons.restart} ${lesson.id === 'drill' ? 'New notes' : 'Play again'}</button>` : ''}
       ${nxt ? `<button class="btn primary" data-next>Next: ${nxt.title}</button>` : ''}
     </div>
   </div></div>`);
@@ -386,7 +432,7 @@ function figureEl(step) {
     const f = h('<figure class="figure staff-fig"><div class="staff-host"></div></figure>');
     const draw = () => renderStaff($('.staff-host', f), {
       staves: step.staffFig.staves.map((s) => ({ clef: s.clef, events: parseSeq(s.seq) })),
-      key: step.staffFig.key || 'C', time: step.staffFig.time || '4/4', showNames: step.staffFig.names, maxBars: 2,
+      key: step.staffFig.key || 'C', time: step.staffFig.time || '4/4', pickup: step.staffFig.pickup, showNames: step.staffFig.names, maxBars: step.staffFig.bars || 2,
     });
     requestAnimationFrame(draw);
     return f;
@@ -435,9 +481,9 @@ function listenButton(seq, tempo = 90) {
   btn.addEventListener('click', async () => {
     await piano.unlock();
     if (playing) { playing.cancel(); playing = null; return; }
-    const evs = parseSeq(seq).filter((e) => !e.bar).map((e) => ({ midis: e.midis || [], beats: beatsOf(e.dur) }));
     btn.classList.add('active');
-    playing = piano.playSequence(evs, { bpm: tempo });
+    // Played like a demo, so dynamics, staccato and the pedal can be heard.
+    playing = playDemo(buildPractice({ rh: seq }), tempo, false, () => {});
     await playing.done;
     playing = null;
     btn.classList.remove('active');
@@ -481,7 +527,7 @@ function renderPlay(step, ctx) {
   const { moments, staves } = practice;
   const reps = step.reps || 1;
   const labelsAllowed = step.keyLabels || 'c';
-  const canPlayAlong = !step.anyNote && !step.anyOrder && (step.song || moments.length >= 6);
+  const canPlayAlong = !step.anyNote && !step.anyOrder && !step.noDemo && (step.song || moments.length >= 6);
   const labels = store.setting('keyNames') ? labelsAllowed : (labelsAllowed === 'none' ? 'none' : 'c');
 
   const el = h(`<div class="play">
@@ -489,7 +535,7 @@ function renderPlay(step, ctx) {
       <p class="say">${step.say}</p>
       <div class="play-tools">
         <span class="reps"></span>
-        ${step.anyNote ? '' : `<button class="pill" data-demo>${icons.ear}<span>Listen</span></button>`}
+        ${step.anyNote || step.noDemo ? '' : `<button class="pill" data-demo>${icons.ear}<span>Listen</span></button>`}
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
         ${step.song ? `<button class="icon-btn" data-print aria-label="Print sheet music">${icons.print}</button>` : ''}
         ${step.hint === false ? `<button class="pill" data-hint>${icons.bulb}<span>Show me</span></button>` : ''}
@@ -509,6 +555,12 @@ function renderPlay(step, ctx) {
 
   let rep = 0, mi = 0;
   let satisfied = new Set(); // indexes into moment.items
+  // Steps with dynamics or staccato: what the mic heard of each note's loudness and length.
+  const dynAt = dynamicsByMoment(moments);
+  const expressive = moments.some((m) => m.items.some((it) => it.staccato)) || new Set(dynAt.filter(Boolean)).size > 1;
+  let heard = [];
+  let demoAt = null; // the moment the Listen demo is playing
+  let startedAt = null; // timed drills: when the first note was played
   let showTargets = step.hint !== false;
   let finished = false;
 
@@ -521,14 +573,17 @@ function renderPlay(step, ctx) {
       music.innerHTML = `<div class="big-prompt">${finished ? 'Heard you!' : 'Play any key'}</div>`;
       return;
     }
+    // While the demo plays, the music follows it instead of the player.
+    const at = demoAt ?? mi;
+    const fin = demoAt == null && finished;
     if (step.staff) {
-      const cur = moments[mi]?.items[0];
+      const cur = moments[at]?.items[0];
       const done = new Set();
-      moments.slice(0, mi).forEach((m) => m.items.forEach((it) => done.add(`${it.staff}:${it.index}`)));
+      moments.slice(0, at).forEach((m) => m.items.forEach((it) => done.add(`${it.staff}:${it.index}`)));
       renderStaff(music, {
         staves: staves.map((s) => ({ clef: s.clef, events: s.events })),
         key: step.key || 'C', time: step.time || '4/4', pickup: step.pickup,
-        current: cur && !finished ? { staff: cur.staff, index: cur.index } : null, done, showNames: step.names,
+        current: cur && !fin ? { staff: cur.staff, index: cur.index } : null, done, showNames: step.names,
       });
       return;
     }
@@ -537,15 +592,16 @@ function renderPlay(step, ctx) {
       music.innerHTML = `<div class="strip">${moments.map((m, i) => {
         const beats = Math.max(...m.items.map((it) => it.beats));
         const label = m.items.map((it) => (step.names === false ? '' : prettyName(it.name))).join(' ');
-        const fingers = m.items.map((it) => it.finger || '').filter(Boolean).join(' ');
+        const hands = store.setting('handLabels');
+        const fingers = m.items.filter((it) => it.finger).map((it) => (hands ? `${it.hand}${it.finger}` : it.finger)).join(' ');
         return `<div class="chip hand-${m.items[0].hand}" data-i="${i}" style="--w:${Math.min(4, Math.max(1, beats))}">
           <b>${label || '?'}</b>${fingers ? `<small>${fingers}</small>` : ''}</div>`;
       }).join('')}</div>`;
     }
     music.querySelectorAll('.chip').forEach((c, i) => {
-      c.classList.toggle('done', i < mi || finished);
-      c.classList.toggle('now', i === mi && !finished);
-      if (step.anyOrder) c.classList.toggle('done', finished);
+      c.classList.toggle('done', i < at || fin);
+      c.classList.toggle('now', i === at && !fin);
+      if (step.anyOrder) c.classList.toggle('done', fin);
     });
     if (step.anyOrder) {
       // In "any order" steps, mark each satisfied note's chip.
@@ -571,7 +627,7 @@ function renderPlay(step, ctx) {
   }
 
   function reset() {
-    mi = 0; satisfied = new Set(); finished = false;
+    mi = 0; satisfied = new Set(); finished = false; heard = []; startedAt = null;
     listener.clearRecent();
     feedback.textContent = '';
     music.innerHTML = '';
@@ -602,6 +658,8 @@ function renderPlay(step, ctx) {
       return;
     }
     satisfied.add(k);
+    if (step.timed && startedAt == null) startedAt = performance.now();
+    if (source === 'mic' && expressive) heard.push({ t: performance.now(), item: m.items[k], dyn: dynAt[mi] });
     kb.flash(m.items[k].midi, 'good');
     feedback.textContent = '';
     if (satisfied.size >= m.items.length) advance();
@@ -635,6 +693,21 @@ function renderPlay(step, ctx) {
     piano.chime();
     if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
     else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue.</span>`;
+    if (step.timed && startedAt != null) {
+      const secs = Math.round((performance.now() - startedAt) / 100) / 10;
+      const best = store.data.best?.[step.timed];
+      const record = !best || secs < best;
+      if (record) store.data.best = { ...store.data.best, [step.timed]: secs };
+      store.save();
+      feedback.prepend(h(`<p class="expr-tip"><b>${secs} seconds</b> for ${moments.length} notes. ${record ? (best ? 'A new personal best!' : 'That\'s your first time to beat.') : `Your best is ${best} s.`}</p>`));
+    }
+    if (expressive && heard.length >= 4) {
+      const notes = heard;
+      setTimeout(() => {
+        const tip = expressionTip(notes.map((n) => ({ ...n, ...listener.noteShape(n.t) })));
+        if (tip && finished) feedback.prepend(h(`<p class="expr-tip">${icons.ear} ${tip}</p>`));
+      }, 500);
+    }
     if (!step.anyNote) {
       const again = h(`<button class="pill again">${icons.restart}<span>Play again</span></button>`);
       again.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
@@ -677,8 +750,8 @@ function renderPlay(step, ctx) {
     demoBtn.classList.add('active');
     demoBtn.querySelector('span').textContent = 'Stop';
     demo = playDemo(practice, step.tempo || 80, step.metronome || step.song, (i) => {
-      const chips = music.querySelectorAll('.chip');
-      chips.forEach((c, k) => c.classList.toggle('playing', k === i));
+      demoAt = i >= 0 ? i : null;
+      drawMusic();
       if (i >= 0) moments[i].items.forEach((it) => kb.flash(it.midi, 'press'));
     }, step.time);
     demo.done.then(() => { if (demo) stopDemo(); });
@@ -700,6 +773,42 @@ function renderPlay(step, ctx) {
 }
 
 // Plays every note at its own time and length, with optional count-in clicks.
+// How hard the demo plays each dynamic.
+const LEVELS = { pp: 0.12, p: 0.25, mp: 0.45, mf: 0.62, f: 0.85, ff: 1 };
+
+// The dynamic (p, mf, f…) in force at each moment, or null before any is marked.
+function dynamicsByMoment(moments) {
+  let cur = null;
+  return moments.map((m) => {
+    const mark = m.items.flatMap((it) => it.marks || []).find((k) => k in LEVELS);
+    if (mark) cur = mark;
+    return cur;
+  });
+}
+
+const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+
+// A friendly word on loud versus soft and short versus long, from what the mic heard.
+// Phones and rooms differ a lot, so this only compares the player with themselves.
+function expressionTip(notes) {
+  const tips = [];
+  const soft = notes.filter((n) => ['pp', 'p', 'mp'].includes(n.dyn)).map((n) => n.peak);
+  const loud = notes.filter((n) => ['f', 'ff'].includes(n.dyn)).map((n) => n.peak);
+  if (soft.length >= 2 && loud.length >= 2) {
+    const ratio = median(loud) / Math.max(1e-6, median(soft));
+    tips.push(ratio >= 1.4 ? 'I could hear your loud and soft clearly. Lovely contrast!'
+      : ratio >= 1.1 ? 'I heard some difference between loud and soft. Try making it even bigger.'
+      : 'Your loud and soft sounded about the same to me. Try a much lighter touch on the soft notes.');
+  }
+  const short = notes.filter((n) => n.item.staccato).map((n) => n.sustain);
+  const long = notes.filter((n) => !n.item.staccato).map((n) => n.sustain);
+  if (short.length >= 2) {
+    const crisp = long.length >= 2 ? median(short) < median(long) * 0.7 : median(short) < 0.3;
+    tips.push(crisp ? 'Your staccato notes were nice and crisp.' : 'Try bouncing off the staccato notes a little quicker.');
+  }
+  return tips.join(' ');
+}
+
 function playDemo(practice, bpm, clicks, onMoment, time = '4/4') {
   const ctx = piano.ctx;
   const spb = 60 / bpm;
@@ -709,12 +818,33 @@ function playDemo(practice, bpm, clicks, onMoment, time = '4/4') {
   if (clicks) for (let b = 0; b < num; b++) piano.click(ctx.currentTime + 0.15 + b * beatUnit * spb, b === 0);
   const handles = [];
   const timers = [];
+  // Loudness follows the dynamics marks; the pedal holds notes until it lifts.
+  let velocity = 0.7, ramp = 0, pedalFrom = null;
+  const pedalled = [];
   practice.moments.forEach((m, i) => {
     const t = start + m.beat * spb;
-    m.items.forEach((it) => handles.push(piano.play(it.midi, { when: t, duration: Math.max(0.2, it.beats * spb * 0.95) })));
+    const marks = m.items.flatMap((it) => it.marks || []);
+    if (marks.includes('lift') && pedalFrom != null) {
+      pedalled.splice(0).forEach((n) => n.release(t));
+      pedalFrom = null;
+    }
+    if (marks.includes('ped')) pedalFrom = t;
+    // A dynamic sets the level; cresc. and dim. keep nudging it until the next one.
+    const level = marks.find((k) => k in LEVELS);
+    if (level) velocity = LEVELS[level];
+    else velocity = Math.min(1, Math.max(0.1, velocity + ramp));
+    ramp = marks.includes('cresc') ? 0.06 : marks.includes('dim') ? -0.06 : level ? 0 : ramp;
+    m.items.forEach((it) => {
+      const len = it.staccato ? Math.min(0.22, it.beats * spb * 0.4) : Math.max(0.2, it.beats * spb * 0.95);
+      const held = pedalFrom != null;
+      const note = piano.play(it.midi, { when: t, duration: held ? 8 : len, velocity });
+      handles.push(note);
+      if (held) pedalled.push({ release: (at) => note.stop(at) });
+    });
     timers.push(setTimeout(() => onMoment(i), (t - ctx.currentTime) * 1000));
   });
   const end = start + practice.totalBeats * spb;
+  pedalled.forEach((n) => n.release(end + 0.4));
   let resolve;
   const done = new Promise((r) => { resolve = r; });
   timers.push(setTimeout(() => { onMoment(-1); resolve(); }, (end - ctx.currentTime) * 1000 + 300));

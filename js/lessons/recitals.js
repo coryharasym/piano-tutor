@@ -65,6 +65,16 @@ const FIN_LH_A = [Cb(), Gb(), Cb(), Gb()].join(' ');
 const FIN_LH_A2 = [Cb(), Gb(), Cb(), Gb(1), Cb(1)].join(' ');
 const FIN_LH_B = [Gb(1), Cb(1), Gb(1), Cb(1), Gb(), Cb(1), Gb(1)].join(' ');
 
+// ---------------------------------------------------------------- Playing with expression
+// Be Thou My Vision (SLANE, Irish), moved from E-flat down to C major, 3/4.
+// Checked against hymnary.org's MusicXML (Psalter Hymnal).
+const SLANE_1 = '!mp (C4/q/3 C4/q/3 D4/8/4 C4/8/3 A3/q/2 G3/q/1 G3/8/1 A3/8/2 C4/q/1 C4/q/1 D4/q/2 E4/h/3 G4/8/5 E4/8/3) !cresc (D4/q/2 D4/q/2 D4/q/2 D4/q/1 E4/q/2 G4/q/4 A4/q/5 G4/q/4 E4/q/2 G4/h/4 G4/q/1)';
+const SLANE_2 = '!f (A4/q/2 A4/8/2 B4/8/3 C5/8/4 B4/8/3 A4/q/2 G4/q/1 E4/q/3 !dim G4/q/5 C4/q/2 B3/q/1 A3/h/2 G3/q/1) !p (C4/q/1 E4/q/2 G4/q/4 A4/8/5 G4/8/4 E4/q/3 C4/8/1 E4/8/3 D4/q/2 C4/q/1 C4/q/1 C4/h./1)';
+// Holy, Holy, Holy (NICAEA, Dykes 1861), in D major as most hymnals print it.
+// Checked against hymnary.org's MusicXML.
+const NICAEA_1 = '!f (D4/q/1 D4/q/1 F#4/q/2 F#4/q/2 A4/h/3 A4/h/3 B4/q./4 B4/8/4 B4/q/4 B4/q/4 A4/h/3 F#4/h/2) !mp (A4/q./3 A4/8/3 A4/q/3 A4/q/3 D5/q/5 D5/q/5 C#5/q/4 A4/q/3 !cresc E4/q/1 A4/q/4 B4/q./5 A4/8/4 A4/w/4)';
+const NICAEA_2 = '!f (D4/q/1 D4/q/1 F#4/q/2 F#4/q/2 A4/q/3 A4/q/3 A4/h/3 B4/q./4 B4/8/4 B4/q/4 B4/q/4 A4/h/3 A4/h/3) !ff (D5/h/5 A4/q/3 A4/q/3 B4/h/4 F#4/h/2 !dim G4/q/3 E4/q/2 E4/q./2 D4/8/1 D4/w/1)';
+
 const CLASSIC = [
   {
     id: 'doxology', level: 1,
@@ -552,12 +562,72 @@ const MORE = [
       performance({ rh: EMM, staff: true, names: false, key: 'Em', pickup: 1, range: ['B3', 'E5'], keyLabels: 'none', tempo: 84 }),
     ],
   },
+  {
+    id: 'be-thou-my-vision', unit: 'ux',
+    title: 'Be Thou My Vision',
+    summary: 'An old Irish melody to shape with soft and loud.',
+    steps: [
+      {
+        t: 'read', title: 'Be Thou My Vision',
+        body: `<p>This tune, called <b>Slane</b>, is an Irish folk melody. It was paired with an ancient Irish prayer in the early 1900s and is now sung all over the world.</p>
+        <p>Use what you've learned in this unit: begin <b><i>mp</i></b>, grow through the second line, sing out <b><i>f</i></b> at the top ("High King of heaven"), then let it settle back to <b><i>p</i></b>. Keep every phrase <b>legato</b> under its slur.</p>
+        <p>It's in 3/4 and ranges from low G to high C, so your hand moves a few times. Follow the finger numbers.</p>`,
+      },
+      {
+        t: 'play', title: 'Lines 1 and 2 (3/4)',
+        say: '"Be Thou my vision, O Lord of my heart; naught be all else to me, save that Thou art."',
+        rh: SLANE_1, staff: true, names: true, time: '3/4', range: ['G3', 'C5'], keyLabels: 'c', tempo: 88, reps: 2,
+      },
+      {
+        t: 'play', title: 'Lines 3 and 4 (3/4)',
+        say: '"Thou my best thought, by day or by night, waking or sleeping, Thy presence my light."',
+        rh: SLANE_2, staff: true, names: true, time: '3/4', range: ['G3', 'C5'], keyLabels: 'c', tempo: 88, reps: 2,
+      },
+      {
+        t: 'play', title: 'Dress rehearsal (3/4)',
+        say: 'The whole hymn, with hints. Listen to the demo first to hear the dynamics.',
+        rh: `${SLANE_1} ${SLANE_2}`, staff: true, names: false, time: '3/4', range: ['G3', 'C5'], keyLabels: 'c', tempo: 92, song: true,
+      },
+      performance({ rh: `${SLANE_1} ${SLANE_2}`, staff: true, names: false, time: '3/4', range: ['G3', 'C5'], keyLabels: 'none', tempo: 92 }),
+    ],
+  },
+  {
+    id: 'holy-holy-holy', unit: 'ux',
+    title: 'Holy, Holy, Holy',
+    summary: 'A grand hymn in D major, from forte to fortissimo.',
+    steps: [
+      {
+        t: 'read', title: 'Holy, Holy, Holy',
+        body: `<p>John Bacchus Dykes wrote this tune, <b>Nicaea</b>, in 1861 for Reginald Heber's words. It's one of the most majestic hymns there is.</p>
+        <p>It's in <b>D major</b>, so every F and C is sharp, just like your D position. Play the opening <b><i>f</i></b>, drop to <b><i>mp</i></b> for "Early in the morning", build back up, and save your biggest sound, <b><i>ff</i></b>, for the high D near the end.</p>`,
+      },
+      {
+        t: 'play', title: 'Lines 1 and 2 [D]',
+        say: '"Holy, holy, holy! Lord God Almighty! Early in the morning our song shall rise to Thee."',
+        rh: NICAEA_1, staff: true, names: true, key: 'D', range: ['D4', 'D5'], keyLabels: 'c', tempo: 88, reps: 2,
+      },
+      {
+        t: 'play', title: 'Lines 3 and 4 [D]',
+        say: '"Holy, holy, holy! Merciful and mighty! God in three Persons, blessed Trinity!"',
+        rh: NICAEA_2, staff: true, names: true, key: 'D', range: ['D4', 'D5'], keyLabels: 'c', tempo: 88, reps: 2,
+      },
+      {
+        t: 'play', title: 'Dress rehearsal [D]',
+        say: 'The whole hymn, with hints. Make the dynamics big and clear.',
+        rh: `${NICAEA_1} ${NICAEA_2}`, staff: true, names: false, key: 'D', range: ['D4', 'D5'], keyLabels: 'c', tempo: 92, song: true,
+      },
+      performance({ rh: `${NICAEA_1} ${NICAEA_2}`, staff: true, names: false, key: 'D', range: ['D4', 'D5'], keyLabels: 'none', tempo: 92 }),
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------- Pieces and recitals
+// Pieces from the first units say which unit by `level`; later ones name their unit.
+const unitOf = (p) => p.unit || `u${p.level}`;
+
 // Every piece is also a lesson of its own on the Hymns shelf.
-export const PIECES = [...CLASSIC, ...MORE].sort((a, b) => a.level - b.level).map((p) => ({
-  ...p, id: `hymn-${p.id}`, hymn: true,
+export const PIECES = [...CLASSIC, ...MORE].map((p) => ({
+  ...p, id: `hymn-${p.id}`, unit: unitOf(p), hymn: true,
   summary: p.summary,
   steps: p.steps.map((s) => (s.final ? { ...s, title: 'Play it through', say: 'Play the whole piece from start to finish, with no keyboard hints. Tap "Show me" if you get stuck.' } : s)),
   recitalSteps: p.steps,
@@ -571,10 +641,11 @@ export function chooseRecital(unitId, pieceId) {
   if (RECITALS[unitId]?.choices.some((p) => p.id === pieceId)) chosen[unitId] = pieceId;
 }
 
-function recital(unitId, n, final = false) {
-  const choices = PIECES.filter((p) => p.level === n);
+// `name` makes the lesson id (recital-1 …), which is how progress is saved.
+function recital(unitId, name, final = false) {
+  const choices = PIECES.filter((p) => p.unit === unitId);
   const lesson = {
-    id: `recital-${n}`, recital: true, choices,
+    id: `recital-${name}`, recital: true, choices,
     get piece() { return pieceById(chosen[unitId]) || choices[0]; },
     get title() { return `${final ? 'Final recital' : 'Recital'}: ${this.piece.title}`; },
     get summary() { return choices.length > 1 ? `Choose your piece: ${choices.map((p) => p.title).join(' or ')}.` : this.piece.summary; },
@@ -587,6 +658,6 @@ function recital(unitId, n, final = false) {
 }
 
 export const RECITALS = {
-  u1: recital('u1', 1), u2: recital('u2', 2), u3: recital('u3', 3),
-  u4: recital('u4', 4), u5: recital('u5', 5), u6: recital('u6', 6, true),
+  u1: recital('u1', 1), u2: recital('u2', 2), u3: recital('u3', 3), u4: recital('u4', 4),
+  ux: recital('ux', 'expression'), u5: recital('u5', 5), u6: recital('u6', 6, true),
 };
