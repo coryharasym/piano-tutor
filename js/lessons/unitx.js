@@ -115,6 +115,7 @@ export default {
           t: 'play', title: 'Ode to Joy, with phrasing', song: true,
           say: 'Two phrases: the first mezzo-forte, the second piano like an answer. Breathe between them.',
           rh: '!mf (E4/q/3 E4/q/3 F4/q/4 G4/q/5 G4/q/5 F4/q/4 E4/q/3 D4/q/2 C4/q/1 C4/q/1 D4/q/2 E4/q/3 E4/q./3 D4/8/2 D4/h/2) !p (E4/q/3 E4/q/3 F4/q/4 G4/q/5 G4/q/5 F4/q/4 E4/q/3 D4/q/2 C4/q/1 C4/q/1 D4/q/2 E4/q/3 D4/q./2 C4/8/1 C4/h/1)',
+          lyrics: 'Joy- ful, joy- ful, we a- dore Thee, / God of glo- ry, Lord of love; / Hearts un- fold like flow\'rs be- fore Thee, / op\'n- ing to the sun a- bove.',
           staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 96,
         },
       ],

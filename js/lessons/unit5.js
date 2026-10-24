@@ -222,6 +222,7 @@ export default {
           t: 'play', title: 'Row, Row, Row Your Boat', song: true, time: '6/8',
           say: 'Count "1 2 3 4 5 6" in each bar. In "merrily, merrily", move your hand freely to reach the high C.',
           rh: 'C4/q./1 C4/q./1 C4/q/1 D4/8/2 E4/q./3 E4/q/3 D4/8/2 E4/q/3 F4/8/4 G4/h./5 C5/8 C5/8 C5/8 G4/8 G4/8 G4/8 E4/8 E4/8 E4/8 C4/8 C4/8 C4/8 G4/q/5 F4/8/4 E4/q/3 D4/8/2 C4/h./1',
+          lyrics: 'Row, row, row your boat, / gent- ly down the stream; / mer- ri- ly, mer- ri- ly, mer- ri- ly, mer- ri- ly, / life is but a dream.',
           staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 120,
         },
       ],
