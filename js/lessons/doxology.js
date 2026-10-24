@@ -1,7 +1,7 @@
-// The Doxology (OLD HUNDREDTH, Geneva 1551) comes back through the course
-// where a new skill fits it, until the whole hymn with both hands.
+// The Doxology (OLD HUNDREDTH, Geneva 1551) grows through the course: a
+// little more of it in each unit, until the whole hymn with both hands.
 // Melody and rhythm checked against hymnary.org's MusicXML (Bourgeois).
-// Unit 1's recital is the first line; the rest arrives once you read music.
+// Unit 1's recital is the first line, so these start in unit 2.
 
 // The four lines in C, as the first recital plays them.
 const C1 = 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1 C4/h/1 D4/h/2 E4/h/3';
@@ -49,6 +49,31 @@ const AMEN_LH = '[G2 C3 E3]/h/5-2-1 [G2 B2 D3]/h/5-3-1';
 // Each lesson goes into its unit right after the lesson named by `after`.
 export const DOXOLOGY_LESSONS = [
   {
+    unit: 'u2', after: 'mary',
+    lesson: {
+      id: 'doxology-2', doxology: true,
+      title: 'Doxology: the second line',
+      summary: 'Add "Praise Him, all creatures here below" to the line you know.',
+      steps: [
+        {
+          t: 'read', title: 'The Doxology grows',
+          body: `<p>Your first recital was the opening line of the <b>Doxology</b>. In every unit from now on you'll add a little more, until you can play the whole hymn with both hands.</p>
+          <p>Line two, <b>"Praise Him, all creatures here below"</b>, starts on E with three in a row, steps down to C, then jumps up to F and steps back down.</p>`,
+        },
+        {
+          t: 'play', title: 'Line 2',
+          say: 'Thumb on Middle C, so finger 3 is on E. Three Es, then D, C, a little jump to F, and back down E, D.',
+          rh: C2, lyrics: W2, range: ['E3', 'G4'], keyLabels: 'all', names: true, tempo: 76, reps: 2,
+        },
+        {
+          t: 'play', title: 'Lines 1 and 2', song: true,
+          say: 'Start with finger 4 on Middle C as before. After "flow", move your hand so your thumb is on C again for line two.',
+          rh: `${C1} ${C2}`, lyrics: words(W1, W2), range: ['E3', 'G4'], keyLabels: 'all', names: true, tempo: 76,
+        },
+      ],
+    },
+  },
+  {
     unit: 'u3', after: 'counting',
     lesson: {
       id: 'doxology-3', doxology: true,
@@ -58,13 +83,8 @@ export const DOXOLOGY_LESSONS = [
         {
           t: 'read', title: 'Four lines, twelve bars',
           staffFig: { staves: [{ clef: 'treble', seq: C3 }], names: true },
-          body: `<p>Your first recital was the opening line of the <b>Doxology</b>. Now you can read the staff and count bars, so here is the <b>whole melody</b>. Every line is three bars long, and every line has the same rhythm: a half note, four quarters, then three half notes.</p>
+          body: `<p>Now you can read the staff and count bars, so here is the <b>whole Doxology melody</b>. Every line is three bars long, and every line has the same rhythm: a half note, four quarters, then three half notes.</p>
           <p>Count it: <b>1-2 3 4 | 1 2 3-4 | 1-2 3-4</b>.</p>`,
-        },
-        {
-          t: 'play', title: 'Line 2',
-          say: '"Praise Him, all creatures here below": thumb on Middle C. Three Es, then D, C, a little jump to F, and back down E, D.',
-          rh: C2, lyrics: W2, staff: true, names: true, range: ['E3', 'A4'], keyLabels: 'c', tempo: 76, reps: 2,
         },
         {
           t: 'play', title: 'Line 3',
@@ -110,6 +130,26 @@ export const DOXOLOGY_LESSONS = [
           t: 'play', title: 'The whole Doxology in G', song: true,
           say: 'From the top, in the hymnal key.',
           rh: `${G1} ${G2} ${G3} ${G4}`, lyrics: ALL_WORDS, staff: true, names: false, key: 'G', range: ['C4', 'E5'], keyLabels: 'c', tempo: 84,
+        },
+      ],
+    },
+  },
+  {
+    unit: 'ux', after: 'phrases',
+    lesson: {
+      id: 'doxology-x', doxology: true,
+      title: 'Doxology with expression',
+      summary: 'Phrases, a quiet third line, and a strong ending.',
+      steps: [
+        {
+          t: 'read', title: 'Singing it on the piano',
+          body: `<p>Each line of the Doxology is one <b>phrase</b>, one breath for a singer. Shape each one with a slur, and lift gently between them.</p>
+          <p>Play the first two lines <b>mezzo-forte</b>. Make the third line <b>piano</b>, growing louder at its end, so the last line, "Praise Father, Son, and Holy Ghost", can ring out <b>forte</b>.</p>`,
+        },
+        {
+          t: 'play', title: 'The Doxology, shaped', song: true,
+          say: 'Mezzo-forte, mezzo-forte, piano getting louder, then forte. Breathe between the lines.',
+          rh: shaped(G1, G2, G3, G4), lyrics: ALL_WORDS, staff: true, names: false, key: 'G', range: ['C4', 'E5'], keyLabels: 'c', tempo: 84,
         },
       ],
     },
@@ -161,8 +201,7 @@ export const DOXOLOGY_LESSONS = [
         {
           t: 'read', title: 'The whole hymn',
           staffFig: { staves: [{ clef: 'treble', seq: G1 }, { clef: 'bass', seq: inG(1) }], names: false },
-          body: `<p>This is where the Doxology has been heading: the <b>complete hymn</b>, in the hymnal key of G major, with both hands and the <b>Amen</b> at the end.</p>
-          <p>Shape it like a singer: each line is one phrase, one breath. Play the first two lines <b>mezzo-forte</b>, make the third <b>piano</b> and grow louder, so the last line, "Praise Father, Son, and Holy Ghost", rings out <b>forte</b>.</p>
+          body: `<p>This is where the Doxology has been heading: the <b>complete hymn</b>, in the hymnal key of G major, with both hands, phrasing and dynamics, and the <b>Amen</b> at the end.</p>
           <p>The left-hand chords are G, C and D, played as inversions so your hand hardly moves. The Amen is the "church" ending: a C chord resolving to G.</p>`,
         },
         {
