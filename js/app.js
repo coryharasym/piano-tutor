@@ -1,4 +1,4 @@
-import { UNITS, findLesson, nextLesson } from './lessons/index.js';
+import { UNITS, HYMNS, findLesson, nextLesson } from './lessons/index.js';
 import { piano } from './audio.js';
 import { listener } from './listen.js';
 import { Keyboard } from './keyboard.js';
@@ -7,6 +7,8 @@ import { buildPractice, matches } from './practice.js';
 import { parseSeq, beatsOf, toMidi, midiToName, prettyName } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
+import { mountPlayAlong } from './playalong.js';
+import { mountPrint, printOne, songbook } from './print.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -21,6 +23,9 @@ function route() {
   const [, view, id, step] = location.hash.split('/');
   if (view === 'lesson' && findLesson(id)) return showLesson(id, Number(step) || 0);
   if (view === 'free') return showFreePlay();
+  if (view === 'play' && findLesson(id)) return showPlayAlong(id, Number(step) || 0);
+  if (view === 'print' && printOne(id, Number(step) || 0)) return showPrint(id, Number(step) || 0);
+  if (view === 'songbook') return showSongbook();
   showHome();
 }
 const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
@@ -99,6 +104,7 @@ function showHome() {
       </div>
       <div class="head-actions">
         <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
+        <button class="pill" data-songbook>${icons.book}<span>Songbook</span></button>
         <button class="icon-btn" data-settings aria-label="Settings">${icons.gear}</button>
       </div>
     </header>
@@ -111,7 +117,7 @@ function showHome() {
   const resume = last && !store.isDone(last.lesson) ? last : null;
   const contLesson = resume ? findLesson(resume.lesson).lesson : target;
   cont.appendChild(h(`<button class="continue-card">
-    <span class="eyebrow">${doneCount ? (resume ? 'Pick up where you left off' : 'Up next') : 'Start here'}</span>
+    <span class="eyebrow">${resume ? 'Pick up where you left off' : doneCount ? 'Up next' : 'Start here'}</span>
     <span class="title">${contLesson.title}</span>
     <span class="muted">${contLesson.summary}</span>
     <span class="go">${icons.play}</span>
@@ -121,24 +127,29 @@ function showHome() {
   const units = $('.units', el);
   UNITS.forEach((u, ui) => {
     const done = u.lessons.filter((l) => store.isDone(l.id)).length;
+    const ribbon = u.lessons.some((l) => l.recital && store.isDone(l.id));
     const sec = h(`<div class="unit">
-      <div class="unit-head"><span class="unit-num">${ui + 1}</span><div><h2>${u.title}</h2><p class="muted">${u.blurb}</p></div>
+      <div class="unit-head"><span class="unit-num ${ribbon ? 'ribbon' : ''}">${ribbon ? icons.ribbon : ui + 1}</span><div><h2>${u.title}</h2><p class="muted">${u.blurb}</p></div>
       <span class="unit-progress">${done}/${u.lessons.length}</span></div>
       <div class="lesson-row"></div></div>`);
     const row = $('.lesson-row', sec);
     u.lessons.forEach((l, li) => {
       const isDone = store.isDone(l.id);
-      const card = h(`<button class="lesson-card ${isDone ? 'done' : ''} ${l === target ? 'next' : ''}">
-        <span class="num">${isDone ? icons.check : li + 1}</span>
-        <span class="title">${l.title}</span>
-        <span class="muted">${l.summary}</span></button>`);
-      card.addEventListener('click', () => go(`#/lesson/${l.id}/0`));
-      row.appendChild(card);
+      row.appendChild(lessonCard(l, li, l === target));
     });
     units.appendChild(sec);
   });
 
+  // Hymns shelf: every hymn in the course, in one place.
+  const hymns = h(`<div class="unit hymns">
+    <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every hymn in the course, ready to practice any time.</p></div>
+    <button class="text-btn" data-songbook>${icons.print} Print the songbook</button></div>
+    <div class="lesson-row"></div></div>`);
+  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title.replace(/^(Final )?[Rr]ecital: /, ''))));
+  units.appendChild(hymns);
+
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
+  el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
   app.replaceChildren(el);
   // Bring the next lesson into view in its row.
@@ -146,6 +157,18 @@ function showHome() {
     const card = $('.lesson-card.next', el);
     if (card) card.parentElement.scrollLeft = card.offsetLeft - card.parentElement.offsetLeft - 16;
   });
+}
+
+function lessonCard(l, index, isNext, title = l.title) {
+  const isDone = store.isDone(l.id);
+  const badge = l.recital ? (isDone ? icons.ribbon : icons.note) : (isDone ? icons.check : index + 1);
+  const card = h(`<button class="lesson-card ${isDone ? 'done' : ''} ${isNext ? 'next' : ''} ${l.recital ? 'recital' : ''}">
+    <span class="num">${badge}</span>
+    ${l.recital ? `<span class="eyebrow">${isDone ? 'Recital passed' : 'Recital'}</span>` : ''}
+    <span class="title">${title}</span>
+    <span class="muted">${l.summary}</span></button>`);
+  card.addEventListener('click', () => go(`#/lesson/${l.id}/0`));
+  return card;
 }
 
 // ---------------------------------------------------------------- settings
@@ -200,6 +223,26 @@ function showFreePlay() {
   app.replaceChildren(el);
 }
 
+// ---------------------------------------------------------------- play along
+function showPlayAlong(id, stepIndex) {
+  keepAwake(true);
+  const step = findLesson(id).lesson.steps[stepIndex];
+  if (!step || step.t !== 'play') return go(`#/lesson/${id}/${stepIndex}`);
+  disposers.push(mountPlayAlong(app, step, { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`) }));
+}
+
+// ---------------------------------------------------------------- printing
+function showPrint(id, stepIndex) {
+  keepAwake(false);
+  const songs = printOne(id, stepIndex);
+  disposers.push(mountPrint(app, { songs, heading: songs[0].lesson.title, onBack: () => go(`#/lesson/${id}/${stepIndex}`) }));
+}
+
+function showSongbook() {
+  keepAwake(false);
+  disposers.push(mountPrint(app, { songs: songbook(), heading: 'The Piano Tutor songbook', onBack: () => go('#/') }));
+}
+
 // ---------------------------------------------------------------- lesson
 function showLesson(id, stepIndex) {
   keepAwake(true);
@@ -223,7 +266,13 @@ function showLesson(id, stepIndex) {
   $('.top-actions', el).appendChild(micButton());
 
   const goStep = (i) => go(`#/lesson/${id}/${i}`);
+  let stepDone = false;
   const finish = () => {
+    // A recital's ribbon is earned by playing the performance all the way through.
+    if (lesson.recital && step.final && !stepDone) {
+      toast('Play your recital all the way through to earn the ribbon.');
+      return;
+    }
     store.markDone(id);
     const nxt = nextLesson(store.data.done, id);
     celebrate(lesson, nxt);
@@ -234,7 +283,9 @@ function showLesson(id, stepIndex) {
 
   const ctx = {
     el, stage: $('.stage', el),
+    playAlong: `#/play/${id}/${stepIndex}`,
     complete: () => {
+      stepDone = true;
       const btn = $('[data-next]', el);
       btn.classList.add('ready');
     },
@@ -249,7 +300,7 @@ function showLesson(id, stepIndex) {
 function celebrate(lesson, nxt) {
   const dlg = h(`<div class="sheet-backdrop celebrate"><div class="sheet">
     <div class="confetti">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
-    <h2>Lesson complete</h2>
+    ${lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : '<h2>Lesson complete</h2>'}
     <p class="muted">${lesson.title}</p>
     <div class="sheet-actions">
       <button class="text-btn" data-home>All lessons</button>
@@ -339,6 +390,7 @@ function renderPlay(step, ctx) {
   const { moments, staves } = practice;
   const reps = step.reps || 1;
   const labelsAllowed = step.keyLabels || 'c';
+  const canPlayAlong = !step.anyNote && !step.anyOrder && (step.song || moments.length >= 6);
   const labels = store.setting('keyNames') ? labelsAllowed : (labelsAllowed === 'none' ? 'none' : 'c');
 
   const el = h(`<div class="play">
@@ -347,6 +399,8 @@ function renderPlay(step, ctx) {
       <div class="play-tools">
         <span class="reps"></span>
         ${step.anyNote ? '' : `<button class="pill" data-demo>${icons.ear}<span>Listen</span></button>`}
+        ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
+        ${step.song ? `<button class="icon-btn" data-print aria-label="Print sheet music">${icons.print}</button>` : ''}
         ${step.hint === false ? `<button class="pill" data-hint>${icons.bulb}<span>Show me</span></button>` : ''}
         ${step.anyNote ? '' : `<button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>`}
       </div>
@@ -488,7 +542,8 @@ function renderPlay(step, ctx) {
   function complete() {
     finished = true;
     piano.chime();
-    if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue, or play it again.</span>`;
+    if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
+    else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue, or play it again.</span>`;
     drawMusic(); paintTargets(); paintReps();
     ctx.complete();
     el.classList.add('success');
@@ -534,6 +589,8 @@ function renderPlay(step, ctx) {
   });
   disposers.push(stopDemo);
 
+  $('[data-along]', el)?.addEventListener('click', () => go(ctx.playAlong));
+  $('[data-print]', el)?.addEventListener('click', () => go(ctx.playAlong.replace('#/play/', '#/print/')));
   $('[data-restart]', el)?.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
   $('[data-hint]', el)?.addEventListener('click', () => { showTargets = true; paintTargets(); });
 

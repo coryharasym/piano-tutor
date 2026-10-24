@@ -4,9 +4,13 @@ import u3 from './unit3.js';
 import u4 from './unit4.js';
 import u5 from './unit5.js';
 import u6 from './unit6.js';
+import { RECITALS } from './recitals.js';
 
-export const UNITS = [u1, u2, u3, u4, u5, u6];
+// Each unit ends with its recital.
+export const UNITS = [u1, u2, u3, u4, u5, u6].map((u) => ({ ...u, lessons: [...u.lessons, RECITALS[u.id]] }));
 const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson })));
+
+export const HYMNS = ALL.filter((x) => x.lesson.hymn).map((x) => x.lesson);
 
 export const findLesson = (id) => ALL.find((x) => x.lesson.id === id) || null;
 
