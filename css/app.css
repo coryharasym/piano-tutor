@@ -205,7 +205,7 @@ li { margin-bottom: .25em; }
   box-shadow: inset 0 -5px 0 #ece8df; padding-bottom: 10px;
 }
 .key.black {
-  left: calc((var(--x) + 1) * var(--kw) - var(--kw) * .3); width: calc(var(--kw) * .6); height: 60%; z-index: 2;
+  left: calc(var(--x) * var(--kw) - var(--kw) * .3); width: calc(var(--kw) * .6); height: 60%; z-index: 2;
   background: linear-gradient(#3a4547, #1d2729); border-radius: 0 0 6px 6px; box-shadow: inset 0 -4px 0 #0f1516, 0 2px 3px rgba(0, 0, 0, .25);
   padding-bottom: 8px;
 }
@@ -348,3 +348,22 @@ li { margin-bottom: .25em; }
   .paper { width: auto; min-height: 0; padding: 0; box-shadow: none; border-radius: 0; break-after: page; }
   .paper:last-child { break-after: auto; }
 }
+
+/* ---------- recital picker and replay ---------- */
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-self: center; }
+.choice {
+  display: grid; gap: 4px; text-align: left; padding: 16px; border-radius: 16px; border: 1.5px solid var(--line);
+  background: linear-gradient(160deg, #fff, #fbf3df); box-shadow: var(--shadow); transition: transform .2s var(--ease), border-color .2s var(--ease);
+}
+.choice:hover { transform: translateY(-2px); }
+.choice.on { border-color: #e9b949; }
+.choice .title { font-weight: 650; font-size: 1.05rem; }
+.choice .eyebrow { color: #9a6a12; font-size: .66rem; margin-top: 4px; }
+.choice-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #f6e3b4; color: #9a6a12; }
+.choice.on .choice-mark { background: #e9b949; color: #fff; }
+.choice-mark .icon { width: 18px; height: 18px; }
+.feedback .pill.again { height: 30px; margin-left: 6px; vertical-align: middle; color: var(--ink); }
+.feedback .pill.again .icon { width: 16px; height: 16px; }
+.sheet-actions .btn .icon { width: 16px; height: 16px; vertical-align: -3px; }
+.tune-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 4px; }
+.tune-bar i { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .2s var(--ease); }

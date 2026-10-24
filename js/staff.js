@@ -83,7 +83,7 @@ export function renderStaff(el, opts) {
       const st = new VF.Stave(x, 18 + (opts.showFingers ? 12 : 0) + si * 100, w);
       if (b === from) {
         st.addClef(s.clef);
-        if (key !== 'C' && key !== 'Am') st.addKeySignature(key.replace('m', ''));
+        if (key !== 'C' && key !== 'Am') st.addKeySignature(key);
         if (from === 0) st.addTimeSignature(time);
       }
       if (b === barCount - 1) st.setEndBarType(VF.Barline.type.END);

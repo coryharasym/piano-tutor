@@ -1,6 +1,6 @@
 // Checks every lesson: notes parse, bars add up, hands line up, fingers match.
 import assert from 'node:assert';
-import { UNITS } from '../js/lessons/index.js';
+import { UNITS, HYMNS, HYMN_SHELF, chooseRecital } from '../js/lessons/index.js';
 import { parseSeq, beatsOf, toMidi } from '../js/theory.js';
 import { buildPractice } from '../js/practice.js';
 
@@ -8,8 +8,13 @@ const ids = new Set();
 let lessons = 0, plays = 0, problems = [];
 const fail = (where, msg) => problems.push(`${where}: ${msg}`);
 
-for (const unit of UNITS) {
-  for (const lesson of unit.lessons) {
+// Every lesson, every hymn on the shelf, and each recital with each of its pieces.
+const checks = [];
+for (const unit of UNITS) for (const lesson of unit.lessons) checks.push(lesson);
+for (const lesson of HYMNS) checks.push(lesson);
+
+for (const lesson of checks) {
+  {
     lessons++;
     assert.ok(!ids.has(lesson.id), `duplicate id ${lesson.id}`);
     ids.add(lesson.id);
@@ -25,6 +30,10 @@ for (const unit of UNITS) {
       if (step.t === 'read') {
         if (!step.body) fail(where, 'empty read step');
         if (step.staffFig) step.staffFig.staves.forEach((s) => parseSeq(s.seq));
+        return;
+      }
+      if (step.t === 'choose') {
+        if (!(lesson.choices?.length > 1)) fail(where, 'choose step without choices');
         return;
       }
       if (step.t !== 'play') return fail(where, `unknown step type ${step.t}`);
@@ -61,6 +70,18 @@ for (const unit of UNITS) {
     });
   }
 }
+// Picking each recital piece swaps in that piece's steps.
+for (const unit of UNITS) {
+  const rec = unit.lessons.find((l) => l.recital);
+  assert.ok(rec, `${unit.id} has no recital`);
+  for (const piece of rec.choices) {
+    chooseRecital(unit.id, piece.id);
+    assert.equal(rec.piece, piece);
+    assert.ok(rec.steps.some((s) => s.final), `${rec.id} with ${piece.id} has no performance`);
+  }
+  chooseRecital(unit.id, rec.choices[0].id);
+}
+
 console.log(`${UNITS.length} units, ${lessons} lessons, ${plays} practice steps`);
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('lessons ok');
