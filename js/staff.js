@@ -46,9 +46,9 @@ export function renderStaff(el, opts) {
   const measures = staves.map((s) => toMeasures(s.events, perBar, opts.pickup));
   const barCount = Math.max(...measures.map((m) => m.length));
 
-  const width = Math.max(260, el.clientWidth || 600);
+  const width = opts.width || Math.max(260, el.clientWidth || 600);
   const grand = staves.length > 1;
-  const lineH = grand ? 190 : 110;
+  const lineH = grand ? 215 : 135;
   const firstExtra = 70 + (KEY_SIG_ACCIDENTALS[key] ? Object.keys(KEY_SIG_ACCIDENTALS[key]).length * 12 : 0);
   const maxBars = opts.maxBars || Math.max(1, Math.min(4, Math.floor((width - firstExtra) / 170)));
 
@@ -57,11 +57,12 @@ export function renderStaff(el, opts) {
   let curBar = 0;
   measures[cur.staff]?.forEach((bar, bi) => { if (bar.some((e) => e.index === cur.index)) curBar = bi; });
   const page = Math.floor(curBar / maxBars);
-  const from = page * maxBars, to = Math.min(barCount, from + maxBars);
+  // opts.bars = [from, to] draws a fixed slice instead (used for printing).
+  const [from, to] = opts.bars ? [opts.bars[0], Math.min(barCount, opts.bars[1])] : [page * maxBars, Math.min(barCount, page * maxBars + maxBars)];
   const shown = to - from;
 
   const renderer = new VF.Renderer(el, VF.Renderer.Backends.SVG);
-  const height = lineH + (showNames ? 20 : 0);
+  const height = lineH + (showNames ? 20 : 0) + (opts.showFingers ? 12 : 0);
   renderer.resize(width, height);
   const ctx = renderer.getContext();
   ctx.setFont('Inter', 10);
@@ -79,11 +80,11 @@ export function renderStaff(el, opts) {
   for (let b = from; b < to; b++) {
     const w = (usable * weights[b - from]) / weightSum + (b === from ? firstExtra : 0);
     const staveObjs = staves.map((s, si) => {
-      const st = new VF.Stave(x, 10 + si * 95, w);
+      const st = new VF.Stave(x, 18 + (opts.showFingers ? 12 : 0) + si * 100, w);
       if (b === from) {
         st.addClef(s.clef);
         if (key !== 'C' && key !== 'Am') st.addKeySignature(key.replace('m', ''));
-        if (page === 0) st.addTimeSignature(time);
+        if (from === 0) st.addTimeSignature(time);
       }
       if (b === barCount - 1) st.setEndBarType(VF.Barline.type.END);
       st.setContext(ctx).draw();
@@ -111,6 +112,11 @@ export function renderStaff(el, opts) {
             const inKey = accInKey[name[0]] || '';
             if (acc !== inKey) n.addModifier(new VF.Accidental(acc || 'n'), ki);
           });
+          if (opts.showFingers && ev.fingers.length) {
+            // Fingering above the right hand, below the left.
+            const pos = si === 0 ? VF.Annotation.VerticalJustify.TOP : VF.Annotation.VerticalJustify.BOTTOM;
+            n.addModifier(new VF.Annotation(ev.fingers.join(' ')).setVerticalJustification(pos).setFont('Inter', 10, 'bold'), 0);
+          }
           if (showNames) {
             const label = ev.notes.map((nm) => nm.replace(/-?\d$/, '').replace('#', '♯').replace('b', '♭')).join('');
             n.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Inter', 11), 0);
@@ -146,5 +152,5 @@ export function renderStaff(el, opts) {
     svg.style.width = '100%';
     svg.style.height = 'auto';
   }
-  return { pages: Math.ceil(barCount / maxBars), page };
+  return { pages: Math.ceil(barCount / maxBars), page, barCount };
 }

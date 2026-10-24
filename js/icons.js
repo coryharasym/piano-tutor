@@ -16,6 +16,10 @@ export const icons = {
   check: wrap('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   piano: wrap('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v8M12 5v8M16 5v8M8 13v6M12 13v6M16 13v6"/>'),
   metronome: wrap('<path d="M8 3h8l3 18H5z"/><path d="M12 15l5-8"/>'),
+  ribbon: wrap('<circle cx="12" cy="9" r="6"/><path d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/>'),
+  note: wrap('<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'),
+  print: wrap('<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>'),
+  book: wrap('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M9 7h6"/>'),
   x: wrap('<path d="M6 6l12 12M18 6L6 18"/>'),
   rotate: wrap('<rect x="4" y="7" width="16" height="10" rx="2"/><path d="M12 3a9 9 0 0 1 7 3.5M19 3v3.5h-3.5"/>'),
 };
