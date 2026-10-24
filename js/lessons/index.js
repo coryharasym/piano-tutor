@@ -4,15 +4,20 @@ import u3 from './unit3.js';
 import u4 from './unit4.js';
 import u5 from './unit5.js';
 import u6 from './unit6.js';
-import { RECITALS } from './recitals.js';
+import { RECITALS, PIECES } from './recitals.js';
+
+export { chooseRecital } from './recitals.js';
 
 // Each unit ends with its recital.
 export const UNITS = [u1, u2, u3, u4, u5, u6].map((u) => ({ ...u, lessons: [...u.lessons, RECITALS[u.id]] }));
 const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson })));
 
-export const HYMNS = ALL.filter((x) => x.lesson.hymn).map((x) => x.lesson);
+// Every hymn and recital piece, playable any time from the Hymns shelf.
+export const HYMN_SHELF = { id: 'hymns', title: 'Hymns' };
+export const HYMNS = PIECES;
+const SHELF = HYMNS.map((lesson) => ({ unit: HYMN_SHELF, lesson }));
 
-export const findLesson = (id) => ALL.find((x) => x.lesson.id === id) || null;
+export const findLesson = (id) => ALL.find((x) => x.lesson.id === id) || SHELF.find((x) => x.lesson.id === id) || null;
 
 // The first unfinished lesson (after `afterId`, if given).
 export function nextLesson(done, afterId) {

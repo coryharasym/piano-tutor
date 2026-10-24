@@ -1,7 +1,7 @@
 // Printable sheet music: one song, or every song in the course as a songbook.
 // Laid out for US Letter paper; the browser's print dialog does the rest.
 
-import { UNITS, findLesson } from './lessons/index.js';
+import { UNITS, HYMNS, HYMN_SHELF, findLesson } from './lessons/index.js';
 import { buildPractice } from './practice.js';
 import { renderStaff } from './staff.js';
 import { icons } from './icons.js';
@@ -19,21 +19,22 @@ const TITLES = {
 const KEY_NAMES = { C: 'C major', G: 'G major', D: 'D major', F: 'F major', Am: 'A minor', Em: 'E minor', Dm: 'D minor' };
 
 export function songTitle(lesson, step) {
-  if (lesson.recital) {
-    const t = lesson.title.replace(/^(Final )?[Rr]ecital: /, '');
-    return t[0].toUpperCase() + t.slice(1);
-  }
+  if (lesson.recital) return lesson.piece.title;
+  if (lesson.hymn) return lesson.title;
   return TITLES[lesson.id] || step.title || lesson.title;
 }
 
-// The last song step of each lesson (a recital's performance, not its rehearsal).
+// The last song step of each lesson (the full performance, not the rehearsal):
+// the course's songs in order, then every hymn. Recitals are covered by the hymns.
 export function songbook() {
   const songs = [];
-  UNITS.forEach((unit) => unit.lessons.forEach((lesson) => {
+  const add = (unit, lesson) => {
     let last = -1;
     lesson.steps.forEach((s, i) => { if (s.t === 'play' && s.song) last = i; });
     if (last >= 0) songs.push({ unit, lesson, stepIndex: last });
-  }));
+  };
+  UNITS.forEach((unit) => unit.lessons.forEach((lesson) => { if (!lesson.recital) add(unit, lesson); }));
+  HYMNS.forEach((lesson) => add(HYMN_SHELF, lesson));
   return songs;
 }
 
@@ -50,11 +51,12 @@ function songPage(unit, lesson, step) {
   const hands = staves.map((s) => (s.hand === 'R' ? 'Right hand' : 'Left hand')).join(' and ');
   const facts = [hands, `${step.time || '4/4'} time`];
   if (step.key && step.key !== 'C') facts.push(`Key of ${KEY_NAMES[step.key] || step.key}`);
-  const fingerNote = staves.length > 1
+  const hasFingers = staves.some((s) => s.events.some((e) => e.fingers?.length));
+  const fingerNote = !hasFingers ? '' : staves.length > 1
     ? 'Finger numbers sit above the right hand and below the left. 1 is the thumb.'
     : 'Small numbers are fingers. 1 is the thumb.';
   page.innerHTML = `<header class="paper-head">
-      <p class="paper-eyebrow">${lesson.recital ? (lesson.hymn ? 'Hymn' : 'Recital') : unit.title}</p>
+      <p class="paper-eyebrow">${lesson.hymn ? `Hymn · Level ${lesson.level}` : lesson.recital ? 'Recital' : unit.title}</p>
       <h1>${songTitle(lesson, step)}</h1>
       <p class="paper-sub">${facts.join(' · ')}</p>
     </header>

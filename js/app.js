@@ -1,4 +1,4 @@
-import { UNITS, HYMNS, findLesson, nextLesson } from './lessons/index.js';
+import { UNITS, HYMNS, findLesson, nextLesson, chooseRecital } from './lessons/index.js';
 import { piano } from './audio.js';
 import { listener } from './listen.js';
 import { Keyboard } from './keyboard.js';
@@ -15,6 +15,7 @@ const app = $('#app');
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 
 piano.setVolume(store.setting('volume'));
+Object.entries(store.data.recitals || {}).forEach(([unit, piece]) => chooseRecital(unit, piece));
 
 // ---------------------------------------------------------------- routing
 window.addEventListener('hashchange', route);
@@ -142,10 +143,10 @@ function showHome() {
 
   // Hymns shelf: every hymn in the course, in one place.
   const hymns = h(`<div class="unit hymns">
-    <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every hymn in the course, ready to practice any time.</p></div>
+    <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every recital piece, ready to practice any time. Levels match the units.</p></div>
     <button class="text-btn" data-songbook>${icons.print} Print the songbook</button></div>
     <div class="lesson-row"></div></div>`);
-  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title.replace(/^(Final )?[Rr]ecital: /, ''))));
+  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Level ${l.level}`)));
   units.appendChild(hymns);
 
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
@@ -159,12 +160,12 @@ function showHome() {
   });
 }
 
-function lessonCard(l, index, isNext, title = l.title) {
+function lessonCard(l, index, isNext, title = l.title, eyebrow = '') {
   const isDone = store.isDone(l.id);
   const badge = l.recital ? (isDone ? icons.ribbon : icons.note) : (isDone ? icons.check : index + 1);
   const card = h(`<button class="lesson-card ${isDone ? 'done' : ''} ${isNext ? 'next' : ''} ${l.recital ? 'recital' : ''}">
     <span class="num">${badge}</span>
-    ${l.recital ? `<span class="eyebrow">${isDone ? 'Recital passed' : 'Recital'}</span>` : ''}
+    ${l.recital ? `<span class="eyebrow">${isDone ? 'Recital passed' : 'Recital'}</span>` : eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ''}
     <span class="title">${title}</span>
     <span class="muted">${l.summary}</span></button>`);
   card.addEventListener('click', () => go(`#/lesson/${l.id}/0`));
@@ -274,8 +275,11 @@ function showLesson(id, stepIndex) {
       return;
     }
     store.markDone(id);
-    const nxt = nextLesson(store.data.done, id);
-    celebrate(lesson, nxt);
+    // From the Hymns shelf, the next hymn; otherwise the next lesson in the course.
+    const nxt = lesson.hymn
+      ? HYMNS.slice(HYMNS.indexOf(lesson) + 1).find((l) => !store.isDone(l.id)) || null
+      : nextLesson(store.data.done, id);
+    celebrate(lesson, nxt, step.t === 'play' ? () => route() : null);
   };
   $('[data-home]', el).addEventListener('click', () => go('#/'));
   $('[data-prev]', el).addEventListener('click', () => goStep(stepIndex - 1));
@@ -295,20 +299,23 @@ function showLesson(id, stepIndex) {
   if (step.t === 'read') renderRead(step, ctx);
   else if (step.t === 'quiz') renderQuiz(step, ctx);
   else if (step.t === 'play') renderPlay(step, ctx);
+  else if (step.t === 'choose') renderChoose(step, lesson, ctx);
 }
 
-function celebrate(lesson, nxt) {
+function celebrate(lesson, nxt, again) {
   const dlg = h(`<div class="sheet-backdrop celebrate"><div class="sheet">
     <div class="confetti">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
     ${lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : '<h2>Lesson complete</h2>'}
     <p class="muted">${lesson.title}</p>
     <div class="sheet-actions">
       <button class="text-btn" data-home>All lessons</button>
+      ${again ? `<button class="btn" data-again>${icons.restart} Play again</button>` : ''}
       ${nxt ? `<button class="btn primary" data-next>Next: ${nxt.title}</button>` : ''}
     </div>
   </div></div>`);
   $('[data-home]', dlg).addEventListener('click', () => { dlg.remove(); go('#/'); });
   $('[data-next]', dlg)?.addEventListener('click', () => { dlg.remove(); go(`#/lesson/${nxt.id}/0`); });
+  $('[data-again]', dlg)?.addEventListener('click', () => { dlg.remove(); again(); });
   document.body.appendChild(dlg);
   disposers.push(() => dlg.remove());
 }
@@ -326,6 +333,31 @@ function figureEl(step) {
     return f;
   }
   return null;
+}
+
+// A recital lets you pick your piece from the ones that suit this level.
+function renderChoose(step, lesson, ctx) {
+  const el = h(`<div class="read choose">
+    <div class="read-text"><h2>${step.title}</h2>
+      <p>Pick the piece you'd like to perform. Each one suits what you've learned so far. You can come back and switch any time, and every piece is always waiting on the Hymns shelf.</p></div>
+    <div class="choices"></div>
+  </div>`);
+  lesson.choices.forEach((p) => {
+    const on = p === lesson.piece;
+    const card = h(`<button class="choice ${on ? 'on' : ''}">
+      <span class="choice-mark">${on ? icons.check : icons.note}</span>
+      <span class="title">${p.title}</span><span class="muted">${p.summary}</span>
+      <span class="eyebrow">${on ? 'Chosen' : 'Choose this one'}</span></button>`);
+    card.addEventListener('click', () => {
+      store.data.recitals = { ...store.data.recitals, [step.unit]: p.id };
+      store.save();
+      chooseRecital(step.unit, p.id);
+      ctx.next();
+    });
+    $('.choices', el).appendChild(card);
+  });
+  ctx.stage.appendChild(el);
+  ctx.complete();
 }
 
 function renderRead(step, ctx) {
@@ -543,7 +575,12 @@ function renderPlay(step, ctx) {
     finished = true;
     piano.chime();
     if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
-    else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue, or play it again.</span>`;
+    else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue.</span>`;
+    if (!step.anyNote) {
+      const again = h(`<button class="pill again">${icons.restart}<span>Play again</span></button>`);
+      again.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
+      feedback.append(' ', again);
+    }
     drawMusic(); paintTargets(); paintReps();
     ctx.complete();
     el.classList.add('success');
