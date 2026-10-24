@@ -1,0 +1,10 @@
+{
+  "name": "piano-tutor",
+  "private": true,
+  "type": "module",
+  "description": "Classical piano lessons for beginners, with a keyboard that listens.",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node test/lessons.test.mjs && node test/pitch.test.mjs && node test/samples.test.mjs"
+  }
+}
