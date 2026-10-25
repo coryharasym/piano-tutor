@@ -70,7 +70,9 @@ export function renderStaff(el, opts) {
 
   const renderer = new VF.Renderer(el, VF.Renderer.Backends.SVG);
   const hasMarks = staves.some((s, si) => s.events.some((e) => e.marks || (si > 0 && e.slurStart)));
-  const height = lineH + (showNames ? 20 : 0) + (opts.showFingers ? 12 : 0) + (hasMarks ? 28 : 0);
+  // Printed songs: words under the melody, one line per time the note is sung.
+  const lyricRows = opts.lyrics ? Math.max(0, ...[...opts.lyrics.values()].map((l) => l.length)) * 17 : 0;
+  const height = lineH + (showNames ? 20 : 0) + (opts.showFingers ? 12 : 0) + (hasMarks ? 28 : 0) + lyricRows;
   renderer.resize(width, height);
   const ctx = renderer.getContext();
   ctx.setFont('Inter', 10);
@@ -89,7 +91,7 @@ export function renderStaff(el, opts) {
   for (let b = from; b < to; b++) {
     const w = (usable * weights[b - from]) / weightSum + (b === from ? firstExtra : 0);
     const staveObjs = staves.map((s, si) => {
-      const st = new VF.Stave(x, 18 + (opts.showFingers ? 12 : 0) + si * 100, w);
+      const st = new VF.Stave(x, 18 + (opts.showFingers ? 12 : 0) + si * (100 + lyricRows), w);
       if (b === from) {
         st.addClef(s.clef);
         if (key !== 'C' && key !== 'Am') st.addKeySignature(key);
@@ -140,6 +142,9 @@ export function renderStaff(el, opts) {
             const label = ev.notes.map((nm) => nm.replace(/-?\d$/, '').replace('#', '♯').replace('b', '♭')).join('');
             n.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Inter', 11), 0);
           }
+          if (si === 0) (opts.lyrics?.get(ev.index) || []).forEach((text) => {
+            n.addModifier(new VF.Annotation(text || ' ').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Georgia', 12), 0);
+          });
         }
         const isCur = cur.staff === si && cur.index === ev.index;
         const isDone = done.has(`${si}:${ev.index}`);

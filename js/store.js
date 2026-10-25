@@ -42,4 +42,12 @@ export const store = {
     this.save();
   },
   reset() { this.data = structuredClone(defaults); this.save(); },
+  // A backup file: everything above, to keep or move to another device.
+  backup() { return JSON.stringify({ app: 'piano-tutor', version: 1, saved: new Date().toISOString(), data: this.data }, null, 1); },
+  restore(text) {
+    const file = JSON.parse(text);
+    if (file?.app !== 'piano-tutor' || typeof file.data?.done !== 'object') throw new Error('Not a Piano Tutor backup');
+    this.data = { ...structuredClone(defaults), ...file.data, settings: { ...defaults.settings, ...file.data.settings } };
+    this.save();
+  },
 };

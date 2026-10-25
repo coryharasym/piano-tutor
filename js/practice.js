@@ -109,3 +109,14 @@ export function matches(heard, wanted, { anyOctave = true, source = 'mic' } = {}
   if (source !== 'mic' || !anyOctave) return false;
   return (heard - wanted) % 12 === 0 && Math.abs(heard - wanted) <= 12;
 }
+
+// Words as plain lines of text, for printing a verse.
+export function lyricText(str) {
+  const lines = [];
+  parseLyrics(str).forEach(({ text, hold, line }) => {
+    if (hold) return;
+    const prev = lines[line] ?? '';
+    lines[line] = prev && !prev.endsWith('-') ? `${prev} ${text}` : `${prev.slice(0, -1)}${text}`;
+  });
+  return lines.filter(Boolean);
+}
