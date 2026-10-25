@@ -20,12 +20,16 @@ export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'
 export function mountPlayAlong(root, step, { micButton, onExit }) {
   const { moments, lyrics } = buildPractice(step);
   const items = moments.flatMap((m, mi) => m.items.map((it) => ({ ...it, beat: m.beat, moment: mi, state: 'pending' })));
-  const total = items.length;
+  // One hand at a time: the app plays the other hand's notes itself.
+  const twoHands = new Set(items.map((it) => it.hand)).size > 1;
   const lastBeat = Math.max(...items.map((it) => it.beat + it.beats));
   const prefs = {
     mode: store.setting('playMode') || 'wait',
     speed: store.setting('playSpeed') || 0.75,
+    hand: twoHands ? store.setting('playHand') || 'both' : 'both',
   };
+  const HANDS = { both: 'Both hands', R: 'Right hand', L: 'Left hand' };
+  const mine = () => items.filter((it) => !it.auto);
 
   const el = document.createElement('main');
   el.className = 'lesson playalong';
@@ -39,6 +43,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       <div class="seg" data-speed role="group" aria-label="Speed">
         ${SPEEDS.map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('')}
       </div>
+      ${twoHands ? '<button class="pill hand" data-hand aria-label="Which hand you play"></button>' : ''}
       <div class="top-actions"></div>
       <button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>
     </header>
@@ -65,7 +70,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   const bps = () => ((step.tempo || 80) * prefs.speed) / 60;
 
   function reset() {
-    items.forEach((it) => { it.state = 'pending'; });
+    items.forEach((it) => { it.state = 'pending'; it.auto = prefs.hand !== 'both' && it.hand !== prefs.hand; });
     beat = -COUNT_IN;
     nextMoment = 0;
     wrong = 0;
@@ -81,6 +86,8 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   function paintSeg() {
     el.querySelectorAll('[data-mode] button').forEach((b) => b.classList.toggle('on', b.dataset.v === prefs.mode));
     el.querySelectorAll('[data-speed] button').forEach((b) => b.classList.toggle('on', +b.dataset.v === prefs.speed));
+    const handBtn = el.querySelector('[data-hand]');
+    if (handBtn) handBtn.textContent = HANDS[prefs.hand];
   }
 
   // ---- input
@@ -92,17 +99,17 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     if (prefs.mode === 'wait') {
       const m = moments[nextMoment];
       // Playing a little early is fine: the music simply catches up.
-      if (m) hit = items.find((it) => it.moment === nextMoment && it.state === 'pending' && matches(midi, it.midi, { anyOctave, source }));
+      if (m) hit = items.find((it) => it.moment === nextMoment && !it.auto && it.state === 'pending' && matches(midi, it.midi, { anyOctave, source }));
     } else {
       const win = WINDOW * bps();
       hit = items
-        .filter((it) => it.state === 'pending' && Math.abs(it.beat - now) <= win && matches(midi, it.midi, { anyOctave, source }))
+        .filter((it) => !it.auto && it.state === 'pending' && Math.abs(it.beat - now) <= win && matches(midi, it.midi, { anyOctave, source }))
         .sort((a, b) => Math.abs(a.beat - now) - Math.abs(b.beat - now))[0];
     }
     if (hit) {
       hit.state = 'hit';
       kb.flash(hit.midi, 'good');
-      if (prefs.mode === 'wait' && items.every((it) => it.moment !== nextMoment || it.state === 'hit')) nextMoment++;
+      if (prefs.mode === 'wait' && items.every((it) => it.moment !== nextMoment || it.state === 'hit' || it.auto)) nextMoment++;
     } else {
       // A note still ringing from a hit isn't a mistake.
       const ringing = items.some((it) => it.state === 'hit' && matches(midi, it.midi, { anyOctave, source }) && now - it.beat < it.beats + 0.5);
@@ -117,8 +124,9 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     if (!running || finished || !listener.active) return;
     const m = moments[nextMoment];
     if (prefs.mode !== 'wait' || !m || m.items.length < 2) return;
-    if (listener.chordHeard(m.items.map((it) => it.midi % 12))) {
-      items.filter((it) => it.moment === nextMoment).forEach((it) => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
+    const want = items.filter((it) => it.moment === nextMoment && !it.auto);
+    if (want.length > 1 && listener.chordHeard(want.map((it) => it.midi % 12))) {
+      want.forEach((it) => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
       nextMoment++;
       listener.clearRecent();
     }
@@ -131,14 +139,22 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     if (running && !finished) {
       let next = beat + dt * bps();
       if (prefs.mode === 'wait') {
-        while (nextMoment < moments.length && items.every((it) => it.moment !== nextMoment || it.state === 'hit')) nextMoment++;
+        while (nextMoment < moments.length && items.every((it) => it.moment !== nextMoment || it.state === 'hit' || it.auto)) nextMoment++;
         const m = moments[nextMoment];
         if (m && next > m.beat) next = m.beat; // hold here until it's played
       } else {
         const late = WINDOW * bps();
-        items.forEach((it) => { if (it.state === 'pending' && next - it.beat > late) it.state = 'missed'; });
+        items.forEach((it) => { if (it.state === 'pending' && !it.auto && next - it.beat > late) it.state = 'missed'; });
       }
       beat = next;
+      // The other hand plays itself as its notes land.
+      items.forEach((it) => {
+        if (it.auto && it.state === 'pending' && beat >= it.beat) {
+          it.state = 'played';
+          piano.play(it.midi, { duration: Math.max(0.25, (it.beats / bps()) * 0.95), velocity: 0.55 });
+          kb.flash(it.midi, 'press');
+        }
+      });
       if (beat > lastBeat + 0.5 || (prefs.mode === 'wait' && nextMoment >= moments.length && beat >= moments[moments.length - 1].beat)) finish();
     }
     updateTargets();
@@ -161,7 +177,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
 
   let targetKey = '';
   function updateTargets() {
-    const soon = items.filter((it) => it.state === 'pending' && it.beat - beat < 0.75 && it.beat - beat > -0.5);
+    const soon = items.filter((it) => it.state === 'pending' && !it.auto && it.beat - beat < 0.75 && it.beat - beat > -0.5);
     const key = soon.map((it) => it.midi).join(',');
     if (key === targetKey) return;
     targetKey = key;
@@ -171,6 +187,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   function finish() {
     finished = true;
     const hits = items.filter((it) => it.state === 'hit').length;
+    const total = mine().length;
     piano.chime();
     const pct = Math.round((hits / total) * 100);
     const line = prefs.mode === 'flow'
@@ -245,13 +262,14 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       const pad = isBlack(it.midi) ? 1 : 3;
       let fill = col[it.hand] || col.R;
       let alpha = 1;
+      if (it.auto) alpha = 0.28;
       if (it.state === 'hit') { fill = col.good; alpha = 0.55; }
       if (it.state === 'missed') { fill = col.miss; alpha = 0.35; }
       g.globalAlpha = alpha;
       g.fillStyle = fill;
       roundRect(g, k.x + pad, yTop, k.w - pad * 2, h, 7);
       g.fill();
-      if (it.finger && it.state === 'pending' && k.w > 22) {
+      if (it.finger && it.state === 'pending' && !it.auto && k.w > 22) {
         g.globalAlpha = 1;
         g.fillStyle = '#fff';
         g.font = '700 13px -apple-system, BlinkMacSystemFont, sans-serif';
@@ -272,6 +290,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     if (beat < 0 && running) hudCount.textContent = String(Math.ceil(-beat));
     else hudCount.textContent = '';
     const hits = items.filter((it) => it.state === 'hit').length;
+    const total = mine().length;
     hudScore.textContent = prefs.mode === 'flow' ? `${hits} / ${total}` : `${hits} of ${total}`;
   }
 
@@ -281,6 +300,12 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   el.querySelectorAll('[data-mode] button').forEach((b) => b.addEventListener('click', () => {
     prefs.mode = b.dataset.v; store.setting('playMode', prefs.mode); reset();
   }));
+  el.querySelector('[data-hand]')?.addEventListener('click', () => {
+    const order = Object.keys(HANDS);
+    prefs.hand = order[(order.indexOf(prefs.hand) + 1) % order.length];
+    store.setting('playHand', prefs.hand);
+    reset();
+  });
   el.querySelectorAll('[data-speed] button').forEach((b) => b.addEventListener('click', () => {
     prefs.speed = +b.dataset.v; store.setting('playSpeed', prefs.speed); paintSeg();
   }));

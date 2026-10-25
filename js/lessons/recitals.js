@@ -1,6 +1,8 @@
 // One recital per unit: practice the piece in sections, then perform it with
 // the keyboard hints switched off. Hymns are public domain (pre-1900 tunes).
 
+import { DOXOLOGY_LESSONS } from './doxology.js';
+
 // Drop suggested fingerings where the hand moves around too much for them to help.
 const noFingers = (seq) => seq.replace(/(\S+\/[^/\s]+)\/[\d-]+/g, '$1');
 const alberti = (a, b, c, times = 2) => Array(times).fill(`${a}/8/5 ${c}/8/1 ${b}/8/3 ${c}/8/1`).join(' ');
@@ -622,6 +624,59 @@ const MORE = [
   },
 ];
 
+// ---------------------------------------------------------------- Final recital choices
+// The complete Doxology: the last lesson of the Doxology path, as a recital.
+const DOX_STEPS = DOXOLOGY_LESSONS.find((d) => d.lesson.id === 'doxology-6').lesson.steps;
+const { title: _title, say: _say, ...DOX_FINAL } = DOX_STEPS.at(-1);
+
+// Mozart, Piano Sonata in C, K. 545 (1788): the first four bars, checked
+// against the score in the music21 corpus. The left hand sits around Middle C,
+// so it's written in the treble clef as Mozart wrote it.
+const K545_RH = 'C5/h E5/q G5/q B4/q. C5/16 D5/16 C5/q r/q A5/h G5/q C6/q G5/q F5/8 E5/16 F5/16 E5/q r/q';
+const k545Bar = (a, b, c, d) => `${a}/8/5 ${b}/8/1 ${c}/8/${d} ${b}/8/1`;
+const K545_LH = [
+  k545Bar('C4', 'G4', 'E4', 3), k545Bar('C4', 'G4', 'E4', 3), k545Bar('D4', 'G4', 'F4', 2), k545Bar('C4', 'G4', 'E4', 3),
+  k545Bar('C4', 'A4', 'F4', 2), k545Bar('C4', 'G4', 'E4', 3), k545Bar('B3', 'G4', 'D4', 3), k545Bar('C4', 'G4', 'E4', 3),
+].join(' ');
+const K545 = { rh: K545_RH, lh: K545_LH, lhClef: 'treble', staff: true, names: false, range: ['A3', 'D6'], keyLabels: 'c' };
+
+MORE.push(
+  {
+    id: 'doxology-complete', unit: 'u6',
+    title: 'The complete Doxology',
+    summary: 'The whole hymn in G, both hands, with its Amen.',
+    steps: [...DOX_STEPS.slice(0, -1), performance({ ...DOX_FINAL, say: 'The whole Doxology, both hands, with its Amen. Play it like you\'re leading a congregation.' })],
+  },
+  {
+    id: 'mozart-sonata', unit: 'u6',
+    title: 'Mozart: Sonata in C (opening)',
+    summary: 'The famous first four bars of Mozart\'s "easy" sonata, K. 545.',
+    steps: [
+      {
+        t: 'read', title: 'The "easy" sonata',
+        body: `<p>Mozart wrote his <b>Piano Sonata in C, K. 545</b> in 1788 "for beginners". It's one of the most famous openings in piano music.</p>
+        <p>Here are its first four bars. The right hand plays a singing melody, with a quick <b>sixteenth-note</b> turn at the end of bars 2 and 4. The left hand plays an <b>Alberti bass</b> around Middle C: bottom, top, middle, top.</p>`,
+      },
+      {
+        t: 'play', title: 'Left hand alone',
+        say: 'Alberti bass, bottom, top, middle, top. Keep it soft and even.',
+        ...K545, rh: undefined, names: true, tempo: 72, reps: 2,
+      },
+      {
+        t: 'play', title: 'Right hand alone',
+        say: 'Sing the melody. The sixteenths are quick but light.',
+        ...K545, lh: undefined, names: true, tempo: 72, reps: 2,
+      },
+      {
+        t: 'play', title: 'Dress rehearsal',
+        say: 'Both hands, with hints. Melody on top, left hand quieter.',
+        ...K545, tempo: 76, song: true,
+      },
+      performance({ ...K545, keyLabels: 'none', tempo: 80 }),
+    ],
+  },
+);
+
 // ---------------------------------------------------------------- Words
 // The hymn words under each melody, one syllable per note: "-" joins a word
 // to the next syllable, "_" holds the syllable over another note, "/" starts
@@ -672,30 +727,135 @@ const WORDS = [
   [EMM_R, 'Re- joice! Re- joice! Em- man- _ u- _ el / shall come to thee, O _ Is- ra- _ el.'],
 ];
 
-// The words for a melody made of the sections above, or nothing if any part
-// of it isn't a hymn tune (a left-hand drill, say).
-function wordsFor(seq) {
+// More verses, section by section, in the same shape as WORDS: verse 2
+// first. A hymn without them (the Doxology) is sung to one verse.
+const JOY_W2 = [
+  'All Thy works with joy sur- round Thee, / earth and heav\'n re- flect Thy rays,',
+  ['stars and an- gels sing a- round Thee, / cen- ter of un- bro- ken praise.',
+    'sing- ing bird and flow- ing foun- tain / call us to re- joice in Thee.'],
+];
+const HARK_R = 'Hark! the her- ald an- gels sing, / Glo- ry _ to the new- born King!';
+const JLM_R = 'Yes, Je- sus loves me! / Yes, Je- sus loves me! / Yes, Je- sus loves me! / The Bi- ble tells me so.';
+const FAITHFUL_RW = 'come, let us a- dore him, O / come, let us a- dore him, O / come, let us a- dore him, / Christ the Lord. _ _';
+const EMM_RW = 'Re- joice! Re- joice! Em- man- _ u- _ el / shall come to thee, O _ Is- ra- _ el.';
+const VERSES = [
+  [JOY_A, [JOY_W2[0]]], [JOY_A2, [JOY_W2[1]]], [FIN_A, [JOY_W2[0]]], [FIN_A2, [JOY_W2[1]]],
+  [JOY_B, ['Field and for- est, vale and _ moun- tain, / flow- ry _ mead- ow, flash- ing sea,']],
+  [FIN_B, ['Field and for- est, vale and _ moun- tain, / flow- ry _ mead- ow, flash- ing sea,']],
+  [GRACE_1, [
+    '\'Twas grace that _ taught my heart to fear, and +',
+    'Through ma- ny _ dan- gers, toils and snares, I +',
+    'When we\'ve been _ there ten thou- sand years, bright +']],
+  [GRACE_2, ['grace my _ fears re- lieved;', 'have al- _ read- y come;', 'shin- ing _ as the sun,']],
+  [GRACE_3, [
+    'how pre- cious _ did that grace ap- pear / the hour I +',
+    '\'tis grace hath _ brought me safe thus far, / and grace will +',
+    'we\'ve no less _ days to sing God\'s praise / than when we\'d +']],
+  [GRACE_4, ['first be- _ lieved. _ _', 'lead me _ home. _ _', 'first be- _ gun. _ _']],
+  [HARK_1, [
+    'Christ, by high- est heav\'n a- dored, _ / Christ, the ev- er- last- ing Lord;',
+    'Hail the heav\'n- born Prince of Peace! _ / Hail the Sun of Right- eous- ness!']],
+  [HARK_2, [
+    'late in time be- hold Him come, _ / off- spring of a vir- gin\'s womb.',
+    'Light and life to all He brings, _ / ris\'n with heal- ing in His wings.']],
+  [HARK_3, [
+    'Veiled in flesh the God- head see; _ / hail th\'in- car- nate De- i- ty, _',
+    'Mild He lays His glo- ry by, _ / born that man no more may die, _']],
+  [HARK_4, [
+    'pleased as man with men to dwell, / Je- sus, _ our Em- man- u- el.',
+    'born to raise the sons of earth, / born to _ give them sec- ond birth.']],
+  [HARK_5, [HARK_R, HARK_R]],
+  [NIGHT_RH[0], ['Si- lent night, _ ho- ly night, _', 'Si- lent night, _ ho- ly night, _']],
+  [NIGHT_RH[1], ['shep- herds quake at the sight;', 'Son of God, love\'s pure light']],
+  [NIGHT_RH[2], [
+    ['glo- ries stream from heav- en a- far, _', 'heav\'n- ly hosts sing Al- le- lu- _ ia!'],
+    ['ra- diant beams from thy ho- ly face, _', 'with the dawn of re- deem- ing _ grace,']]],
+  [NIGHT_RH[4], ['Christ the Sav- ior is born! _', 'Je- sus, Lord, at thy birth, _']],
+  [NIGHT_RH[5], ['Christ the Sav- ior _ is born!', 'Je- sus, Lord, at _ thy birth.']],
+  [SLANE_1, [
+    'Be Thou my _ Wis- dom, and _ Thou my true Word; _ _ / I ev- er with Thee and Thou with me, Lord; / Thou +',
+    'Rich- es I _ heed not, nor _ man\'s emp- ty praise; _ _ / Thou mine in- her- i- tance, now and al- ways: / Thou +']],
+  [SLANE_2, [
+    'my great _ Fa- ther, and I Thy true son; _ _ / Thou in me dwell- ing, _ and I _ with Thee one. _',
+    'and Thou _ on- ly, first in my heart, _ _ _ / High King of heav- en, _ my treas- _ ure Thou art. _']],
+  [NICAEA_1, [
+    'Ho- ly, ho- ly, ho- ly! All the saints a- dore Thee, / cast- ing down their gold- en crowns a- round the glass- y sea;',
+    'Ho- ly, ho- ly, ho- ly! though the dark- ness hide Thee, / though the eye of sin- ful man Thy glo- ry may not see;',
+    'Ho- ly, ho- ly, ho- ly! Lord God Al- might- y! _ / All Thy works shall praise Thy name, in earth, and sky, and sea;']],
+  [NICAEA_2, [
+    'cher- u- bim and ser- a- phim fall- ing down be- fore Thee, / which wert, and art, and ev- er- more shalt be.',
+    'on- ly Thou art ho- ly; there is none be- side Thee, _ / per- fect in pow\'r, in love, and pu- ri- ty.',
+    'Ho- ly, ho- ly, ho- ly! Mer- ci- ful and might- y! _ / God in three Per- sons, bless- ed Trin- i- ty!']],
+  [JLM_V12, ['Je- sus loves me! He who died / heav- en\'s gate to o- pen wide;', 'Je- sus loves me! He will stay / close be- side me all the way;']],
+  [JLM_V34, ['He will wash a- way my sin, / let His lit- tle child come in.', 'Thou hast bled and died for me, / I will hence- forth live for Thee.']],
+  [JLM_CH, [JLM_R, JLM_R]],
+  [SAINTS_1, ['Oh, when the sun / re- fuse to shine, / Oh, when the sun re- fuse to shine,', 'Oh, when the stars / fall from the sky, / Oh, when the stars fall from the sky,']],
+  [SAINTS_2, ['Lord, I want to be in that num- ber, / when the sun re- fuse to shine.', 'Lord, I want to be in that num- ber, / when the stars fall from the sky.']],
+  [WORLD_1, [
+    'Joy to the earth! the Sav- ior reigns; let +',
+    'No more let sins and sor- rows grow, nor +',
+    'He rules the world with truth and grace, and +']],
+  [WORLD_2, [
+    'men their songs em- ploy; / while fields and floods, rocks, hills and plains / re- peat the sound- ing joy, _ _ / re- +',
+    'thorns in- fest the ground; / He comes to make His bless- ings flow / far as the curse is found, _ _ / far +',
+    'makes the na- tions prove / the glo- ries of His right- eous- ness, / and won- ders of His love, _ _ / and +']],
+  [WORLD_3, [
+    'peat the sound- ing _ joy, _ re- / peat the sound- ing _ joy, _ _ / re- peat, re- peat the sound- ing joy. _ _',
+    'as the curse is _ found, _ far / as the curse is _ found, _ _ / far as, far as the curse is found. _ _',
+    'won- ders of His _ love, _ and / won- ders of His _ love, _ _ / and won- ders, won- ders of His love. _ _']],
+  [MANGER_1, [
+    'The cat- tle are low- ing, the ba- by a- wakes, / but lit- tle Lord Je- sus, no cry- ing he makes;',
+    'Be near me, Lord Je- sus, I ask thee to stay / close by me for- ev- er, and love me, I pray;']],
+  [MANGER_2, [
+    'I love thee, Lord Je- sus, look down from the sky / and stay by my cra- dle till morn- ing is nigh.',
+    'bless all the dear chil- dren in thy ten- der care, / and fit us for heav- en to live with thee there.']],
+  [FAITHFUL_V, ['Sing, choirs of an- _ gels, / sing in ex- ul- ta- tion; / sing, all ye cit- i- zens of heav\'n a- bove! _ _']],
+  [FAITHFUL_M, ['Glo- ry to God, all / glo- ry in the high- _ est; / O +']],
+  [FAITHFUL_R, [FAITHFUL_RW]],
+  [EMM_1, [
+    'O come, Thou Rod of Jes- _ se, _ free / Thine own from Sa- tan\'s _ tyr- an- _ ny;',
+    'O come, Thou Day- spring, come _ and _ cheer / our spir- its by Thine _ ad- vent _ here;']],
+  [EMM_2, [
+    'from depths of hell Thy peo- ple _ save, / and give them vic- t\'ry o\'er _ the _ grave.',
+    'dis- perse the gloom- y clouds of _ night, / and death\'s dark shad- ows put _ to _ flight.']],
+  [EMM_R, [EMM_RW, EMM_RW]],
+];
+
+// The words for a melody made of the sections above (verse 0 is the first),
+// or nothing if any part of it isn't a hymn tune or lacks that verse.
+function wordsFor(seq, verse = 0) {
   const seen = new Map();
   const words = [];
   let rest = seq;
   while (rest) {
     const hit = WORDS.find(([tune]) => rest === tune || rest.startsWith(`${tune} `));
     if (!hit) return null;
-    const verses = [].concat(hit[1]);
+    const text = verse ? VERSES.find(([tune]) => tune === hit[0])?.[1][verse - 1] : hit[1];
+    if (!text) return null;
+    // A section that comes back takes the next of its words, if it has several.
+    const takes = [].concat(text);
     const n = seen.get(hit[0]) || 0;
     seen.set(hit[0], n + 1);
     // A section that ends on a pickup ("+") runs on into the next line.
-    const verse = verses[Math.min(n, verses.length - 1)];
-    words.push(verse.endsWith(' +') ? verse.slice(0, -2) : `${verse} /`);
+    const take = takes[Math.min(n, takes.length - 1)];
+    words.push(take.endsWith(' +') ? take.slice(0, -2) : `${take} /`);
     rest = rest.slice(hit[0].length).trimStart();
   }
   return words.join(' ').replace(/ \/$/, '');
 }
 [...CLASSIC, ...MORE].forEach((p) => p.steps.forEach((s) => {
-  if (s.t === 'play' && s.rh && !s.lyrics) {
+  if (s.t !== 'play' || !s.rh) return;
+  if (!s.lyrics) {
     const words = wordsFor(s.rh);
     if (words) s.lyrics = words;
   }
+  const more = [];
+  for (let v = 1; ; v++) {
+    const words = wordsFor(s.rh, v);
+    if (!words) break;
+    more.push(words);
+  }
+  if (more.length) s.verses = more;
 }));
 
 // ---------------------------------------------------------------- Pieces and recitals

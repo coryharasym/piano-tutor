@@ -2,7 +2,7 @@
 // Laid out for US Letter paper; the browser's print dialog does the rest.
 
 import { UNITS, HYMNS, HYMN_SHELF, findLesson } from './lessons/index.js';
-import { buildPractice } from './practice.js';
+import { buildPractice, lyricText } from './practice.js';
 import { renderStaff } from './staff.js';
 import { icons } from './icons.js';
 
@@ -38,14 +38,32 @@ export function songbook() {
   return songs;
 }
 
-function barsPerLine(step) {
+function barsPerLine(step, practice) {
   const [num, den] = (step.time || '4/4').split('/').map(Number);
   const perBar = num * (4 / den);
-  return perBar <= 1.5 ? 6 : 4;
+  if (!practice.lyrics) return perBar <= 1.5 ? 6 : 4;
+  // Words need room: about twelve beats to a line, or eight when most beats carry more than one word.
+  const crowded = practice.lyrics.length > practice.totalBeats;
+  return Math.min(6, Math.max(2, Math.round((crowded ? 8 : 12) / perBar)));
 }
 
+// The first verse goes under the notes: syllables by event index on the melody staff.
+function wordsUnderNotes({ moments, lyrics }) {
+  if (!lyrics) return null;
+  const under = new Map();
+  moments.forEach((m) => m.items.forEach((it) => {
+    if (it.lyric == null) return;
+    const syl = lyrics[it.lyric];
+    under.set(it.index, [...(under.get(it.index) || []), syl && !syl.hold ? syl.text : '']);
+  }));
+  return under;
+}
+
+const esc = (t) => t.replace(/[<>&]/g, '');
+
 function songPage(unit, lesson, step) {
-  const { staves } = buildPractice(step);
+  const practice = buildPractice(step);
+  const { staves } = practice;
   const page = document.createElement('article');
   page.className = 'paper';
   const hands = staves.map((s) => (s.hand === 'R' ? 'Right hand' : 'Left hand')).join(' and ');
@@ -61,14 +79,15 @@ function songPage(unit, lesson, step) {
       <p class="paper-sub">${facts.join(' · ')}</p>
     </header>
     <div class="systems"></div>
+    ${step.verses ? `<div class="stanzas">${step.verses.map((v, i) => `<p><b>${i + 2}</b>${lyricText(v).map(esc).join('<br>')}</p>`).join('')}</div>` : ''}
     <footer class="paper-foot"><span>${fingerNote}</span><span>Piano Tutor · ${unit.title}</span></footer>`;
 
   const systems = page.querySelector('.systems');
-  const per = barsPerLine(step);
+  const per = barsPerLine(step, practice);
   const opts = {
     staves: staves.map((s) => ({ clef: s.clef, events: s.events })),
     key: step.key || 'C', time: step.time || '4/4', pickup: step.pickup,
-    showFingers: true, showNames: !!step.names, width: RENDER_WIDTH, current: null,
+    showFingers: true, showNames: !!step.names, width: RENDER_WIDTH, current: null, lyrics: wordsUnderNotes(practice),
   };
   // Draw the first line to learn how many bars there are, then the rest.
   let line = document.createElement('div');
@@ -96,18 +115,35 @@ export function mountPrint(root, { songs, heading, onBack }) {
       <button class="icon-btn" data-back aria-label="Back">${icons.back}</button>
       <div class="top-title"><span class="eyebrow">Sheet music</span><span>${heading}</span></div>
       <span class="muted print-tip">Letter size · ${songs.length === 1 ? 'one song' : `${songs.length} songs, one per page`}</span>
-      <button class="pill accent" data-print>${icons.print}<span>Print</span></button>
+      <button class="pill accent" data-print>${icons.print}<span>${songs.length === 1 ? 'Print' : 'Print all'}</span></button>
     </header>
+    ${songs.length > 1 ? `<nav class="contents" aria-label="Songs"><h2>Songs</h2><ol>${songs.map(({ lesson, stepIndex }, i) => `<li>
+      <a href="#" data-goto="${i}">${songTitle(lesson, lesson.steps[stepIndex])}</a>
+      <button class="pill" data-one="${i}" aria-label="Print this song">${icons.print}<span>Print</span></button></li>`).join('')}</ol></nav>` : ''}
     <div class="papers"></div>`;
   root.replaceChildren(el);
   const papers = el.querySelector('.papers');
   songs.forEach(({ unit, lesson, stepIndex }) => papers.appendChild(songPage(unit, lesson, lesson.steps[stepIndex])));
   el.querySelector('[data-back]').addEventListener('click', onBack);
-  el.querySelector('[data-print]').addEventListener('click', () => window.print());
+  el.querySelector('[data-print]').addEventListener('click', () => { clearOnly(); window.print(); });
+  // Printing one song from the songbook: hide the other pages while the dialog is open.
+  const pages = [...papers.children];
+  const clearOnly = () => { delete el.dataset.only; pages.forEach((p) => p.classList.remove('only')); };
+  el.querySelectorAll('[data-one]').forEach((b) => b.addEventListener('click', () => {
+    clearOnly();
+    el.dataset.only = '';
+    pages[+b.dataset.one].classList.add('only');
+    window.print();
+  }));
+  el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    pages[+a.dataset.goto].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  window.addEventListener('afterprint', clearOnly);
   const prevTitle = document.title;
   document.title = songs.length === 1 ? `${songTitle(songs[0].lesson, songs[0].lesson.steps[songs[0].stepIndex])} · Piano Tutor` : 'Piano Tutor songbook';
   window.scrollTo(0, 0);
-  return () => { document.title = prevTitle; };
+  return () => { document.title = prevTitle; window.removeEventListener('afterprint', clearOnly); };
 }
 
 export function printOne(id, stepIndex) {

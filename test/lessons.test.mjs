@@ -75,6 +75,10 @@ for (const lesson of checks) {
       const { moments, lyrics, syllables } = buildPractice(step);
       if (!moments.length) fail(where, 'nothing to play');
       if (lyrics && lyrics.length !== syllables) fail(where, `${lyrics.length} syllables of lyrics for ${syllables} melody notes`);
+      (step.verses || []).forEach((words, v) => {
+        const n = buildPractice({ ...step, lyrics: words }).lyrics.length;
+        if (n !== syllables) fail(where, `verse ${v + 2}: ${n} syllables for ${syllables} melody notes`);
+      });
     });
   }
 }

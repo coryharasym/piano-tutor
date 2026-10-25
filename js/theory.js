@@ -120,7 +120,8 @@ export const beatsOf = (dur) => DUR_BEATS[dur] ?? 1;
 export function parseLyrics(str) {
   const out = [];
   let line = 0;
-  for (const tok of str.trim().split(/\s+/)) {
+  // A non-breaking space keeps two words on one note.
+  for (const tok of str.trim().split(/[ \t\r\n]+/)) {
     if (tok === '/') { line++; continue; }
     out.push(tok === '_' ? { text: '', hold: true, line } : { text: tok, line });
   }

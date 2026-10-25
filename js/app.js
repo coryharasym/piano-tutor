@@ -209,6 +209,8 @@ function showSettings() {
     <label class="row"><span>Show song words<small>The lyrics of hymns and songs, as you play</small></span><input type="checkbox" ${s.lyrics ? 'checked' : ''} data-lyrics></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
+    <div class="row"><span>Back up progress<small>Save your progress to a file, or load it on another device</small></span><span class="row-btns"><button class="pill" data-backup>Back up</button><button class="pill" data-restore>Restore</button></span></div>
+    <input type="file" accept=".json,application/json" data-file hidden>
     <button class="text-btn danger" data-reset>Reset all progress</button>
     <p class="muted small">Progress is saved on this device. Piano sound: Salamander Grand Piano by Alexander Holm (CC BY 3.0).</p>
   </div></div>`);
@@ -221,6 +223,30 @@ function showSettings() {
   $('[data-lyrics]', dlg).addEventListener('change', (e) => { store.setting('lyrics', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
   $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
+  $('[data-backup]', dlg).addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([store.backup()], { type: 'application/json' }));
+    a.download = `piano-tutor-backup-${today()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('[data-restore]', dlg).addEventListener('click', () => $('[data-file]', dlg).click());
+  $('[data-file]', dlg).addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      if (!confirm('Replace the progress on this device with the backup?')) return;
+      store.restore(text);
+      piano.setVolume(store.setting('volume'));
+      close();
+      route();
+    } catch {
+      alert('That file isn\'t a Piano Tutor backup.');
+    }
+  });
   $('[data-reset]', dlg).addEventListener('click', () => {
     if (confirm('Clear all lesson progress on this device?')) { store.reset(); close(); route(); }
   });
@@ -317,7 +343,7 @@ function showPlayAlong(id, stepIndex) {
   keepAwake(true);
   const step = findLesson(id).lesson.steps[stepIndex];
   if (!step || step.t !== 'play') return go(`#/lesson/${id}/${stepIndex}`);
-  disposers.push(mountPlayAlong(app, step, { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`) }));
+  disposers.push(mountPlayAlong(app, sung(step), { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`) }));
 }
 
 // ---------------------------------------------------------------- printing
@@ -390,7 +416,7 @@ function showLesson(id, stepIndex) {
   app.replaceChildren(el);
   if (step.t === 'read') renderRead(step, ctx);
   else if (step.t === 'quiz') renderQuiz(step, ctx);
-  else if (step.t === 'play') renderPlay(step, ctx);
+  else if (step.t === 'play') renderPlay(sung(step), ctx);
   else if (step.t === 'choose') renderChoose(step, lesson, ctx);
 }
 
@@ -524,6 +550,11 @@ function renderQuiz(step, ctx) {
 }
 
 // ---------------------------------------------------------------- play steps
+// Hymns with several verses: which one is sung (the choice holds across hymns).
+const verseCount = (step) => (step.verses ? step.verses.length + 1 : 1);
+const verseOf = (step) => Math.min(store.setting('verse') || 1, verseCount(step));
+const sung = (step) => (verseOf(step) > 1 ? { ...step, lyrics: step.verses[verseOf(step) - 2] } : step);
+
 function renderPlay(step, ctx) {
   const practice = buildPractice(step);
   const { moments, staves } = practice;
@@ -538,6 +569,7 @@ function renderPlay(step, ctx) {
       <div class="play-tools">
         <span class="reps"></span>
         ${step.anyNote || step.noDemo ? '' : `<span class="listen-group"><button class="pill" data-demo>${icons.ear}<span>Listen</span></button><button class="pill speed" data-speed aria-label="Listening speed"></button></span>`}
+        ${step.verses && store.setting('lyrics') ? `<button class="pill" data-verse aria-label="Change verse">Verse ${verseOf(step)}</button>` : ''}
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
         ${step.song ? `<button class="icon-btn" data-print aria-label="Print sheet music">${icons.print}</button>` : ''}
         ${step.hint === false ? `<button class="pill" data-hint>${icons.bulb}<span>Show me</span></button>` : ''}
@@ -775,7 +807,8 @@ function renderPlay(step, ctx) {
   });
   disposers.push(stopDemo);
 
-  $('[data-along]', el)?.addEventListener('click', () => go(ctx.playAlong));
+  $('[data-along]', el)?.addEventListener('click', () => { piano.unlock(); go(ctx.playAlong); });
+  $('[data-verse]', el)?.addEventListener('click', () => { store.setting('verse', (verseOf(step) % verseCount(step)) + 1); route(); });
   $('[data-print]', el)?.addEventListener('click', () => go(ctx.playAlong.replace('#/play/', '#/print/')));
   $('[data-restart]', el)?.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
   $('[data-hint]', el)?.addEventListener('click', () => { showTargets = true; paintTargets(); });

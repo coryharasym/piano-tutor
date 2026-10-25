@@ -7,14 +7,16 @@ import u6 from './unit6.js';
 import ux from './unitx.js';
 import { RECITALS, PIECES } from './recitals.js';
 import { DOXOLOGY_LESSONS } from './doxology.js';
+import { PRACTICE_SONGS } from './songs.js';
 
 export { chooseRecital } from './recitals.js';
 
 // Each unit ends with its recital. Unit ids stay put when units are added,
 // so saved progress still matches; the number shown is the position here.
-// The Doxology lessons slot in after the lesson each one builds on.
-const withDoxology = (u) => u.lessons.flatMap((l) => [l, ...DOXOLOGY_LESSONS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
-export const UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, number: i + 1, lessons: [...withDoxology(u), RECITALS[u.id]] }));
+// The Doxology lessons and practice songs slot in after the lesson each one builds on.
+const EXTRAS = [...DOXOLOGY_LESSONS, ...PRACTICE_SONGS];
+const withExtras = (u) => u.lessons.flatMap((l) => [l, ...EXTRAS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
+export const UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, number: i + 1, lessons: [...withExtras(u), RECITALS[u.id]] }));
 const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson })));
 
 // Every hymn and recital piece, playable any time from the Hymns shelf.
