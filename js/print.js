@@ -38,11 +38,13 @@ export function songbook() {
   return songs;
 }
 
-function barsPerLine(step) {
+function barsPerLine(step, practice) {
   const [num, den] = (step.time || '4/4').split('/').map(Number);
   const perBar = num * (4 / den);
-  // Words need room: four-beat bars with lyrics go three to a line.
-  return perBar <= 1.5 ? 6 : step.lyrics && perBar >= 4 ? 3 : 4;
+  if (!practice.lyrics) return perBar <= 1.5 ? 6 : 4;
+  // Words need room: about twelve beats to a line, or eight when most beats carry more than one word.
+  const crowded = practice.lyrics.length > practice.totalBeats;
+  return Math.min(6, Math.max(2, Math.round((crowded ? 8 : 12) / perBar)));
 }
 
 // The first verse goes under the notes: syllables by event index on the melody staff.
@@ -81,7 +83,7 @@ function songPage(unit, lesson, step) {
     <footer class="paper-foot"><span>${fingerNote}</span><span>Piano Tutor · ${unit.title}</span></footer>`;
 
   const systems = page.querySelector('.systems');
-  const per = barsPerLine(step);
+  const per = barsPerLine(step, practice);
   const opts = {
     staves: staves.map((s) => ({ clef: s.clef, events: s.events })),
     key: step.key || 'C', time: step.time || '4/4', pickup: step.pickup,

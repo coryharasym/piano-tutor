@@ -142,7 +142,8 @@ export function renderStaff(el, opts) {
           });
           if (showNames) {
             const label = ev.notes.map((nm) => nm.replace(/-?\d$/, '').replace('#', '♯').replace('b', '♭')).join('');
-            n.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Inter', 11), 0);
+            if (opts.lyrics && si === 0) n.noteName = label;
+            else n.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Inter', 11), 0);
           }
 
         }
@@ -203,14 +204,16 @@ export function renderStaff(el, opts) {
   if (opts.lyrics) {
     const notes = [...drawn[0].entries()];
     const lowest = Math.max(melodyFloor + 6, ...notes.map(([, n]) => { const bb = n.getBoundingBox(); return bb ? bb.getY() + bb.getH() : 0; }));
-    const base = lowest + (hasMarks ? 34 : 18) + (showNames ? 16 : 0);
+    const namesAt = lowest + (hasMarks ? 34 : 18);
+    const base = namesAt + (showNames ? 16 : 0);
+    const centre = (n, text) => (n.getNoteHeadBeginX ? (n.getNoteHeadBeginX() + n.getNoteHeadEndX()) / 2 : n.getAbsoluteX() + 5) - ctx.measureText(text).width / 2;
     ctx.save();
+    // With words underneath, the melody's note names get a row of their own.
+    ctx.setFont('Inter', 11);
+    if (showNames) notes.forEach(([, n]) => { if (n.noteName) ctx.fillText(n.noteName, centre(n, n.noteName), namesAt); });
     ctx.setFont('Georgia', 12.5);
     notes.forEach(([index, n]) => (opts.lyrics.get(index) || []).forEach((text, row) => {
-      if (!text) return;
-      const w = ctx.measureText(text).width;
-      const head = n.getNoteHeadBeginX ? (n.getNoteHeadBeginX() + n.getNoteHeadEndX()) / 2 : n.getAbsoluteX() + 5;
-      ctx.fillText(text, head - w / 2, base + row * 17);
+      if (text) ctx.fillText(text, centre(n, text), base + row * 17);
     }));
     ctx.restore();
   }

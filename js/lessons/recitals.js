@@ -1,6 +1,8 @@
 // One recital per unit: practice the piece in sections, then perform it with
 // the keyboard hints switched off. Hymns are public domain (pre-1900 tunes).
 
+import { DOXOLOGY_LESSONS } from './doxology.js';
+
 // Drop suggested fingerings where the hand moves around too much for them to help.
 const noFingers = (seq) => seq.replace(/(\S+\/[^/\s]+)\/[\d-]+/g, '$1');
 const alberti = (a, b, c, times = 2) => Array(times).fill(`${a}/8/5 ${c}/8/1 ${b}/8/3 ${c}/8/1`).join(' ');
@@ -621,6 +623,59 @@ const MORE = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------- Final recital choices
+// The complete Doxology: the last lesson of the Doxology path, as a recital.
+const DOX_STEPS = DOXOLOGY_LESSONS.find((d) => d.lesson.id === 'doxology-6').lesson.steps;
+const { title: _title, say: _say, ...DOX_FINAL } = DOX_STEPS.at(-1);
+
+// Mozart, Piano Sonata in C, K. 545 (1788): the first four bars, checked
+// against the score in the music21 corpus. The left hand sits around Middle C,
+// so it's written in the treble clef as Mozart wrote it.
+const K545_RH = 'C5/h E5/q G5/q B4/q. C5/16 D5/16 C5/q r/q A5/h G5/q C6/q G5/q F5/8 E5/16 F5/16 E5/q r/q';
+const k545Bar = (a, b, c, d) => `${a}/8/5 ${b}/8/1 ${c}/8/${d} ${b}/8/1`;
+const K545_LH = [
+  k545Bar('C4', 'G4', 'E4', 3), k545Bar('C4', 'G4', 'E4', 3), k545Bar('D4', 'G4', 'F4', 2), k545Bar('C4', 'G4', 'E4', 3),
+  k545Bar('C4', 'A4', 'F4', 2), k545Bar('C4', 'G4', 'E4', 3), k545Bar('B3', 'G4', 'D4', 3), k545Bar('C4', 'G4', 'E4', 3),
+].join(' ');
+const K545 = { rh: K545_RH, lh: K545_LH, lhClef: 'treble', staff: true, names: false, range: ['A3', 'D6'], keyLabels: 'c' };
+
+MORE.push(
+  {
+    id: 'doxology-complete', unit: 'u6',
+    title: 'The complete Doxology',
+    summary: 'The whole hymn in G, both hands, with its Amen.',
+    steps: [...DOX_STEPS.slice(0, -1), performance({ ...DOX_FINAL, say: 'The whole Doxology, both hands, with its Amen. Play it like you\'re leading a congregation.' })],
+  },
+  {
+    id: 'mozart-sonata', unit: 'u6',
+    title: 'Mozart: Sonata in C (opening)',
+    summary: 'The famous first four bars of Mozart\'s "easy" sonata, K. 545.',
+    steps: [
+      {
+        t: 'read', title: 'The "easy" sonata',
+        body: `<p>Mozart wrote his <b>Piano Sonata in C, K. 545</b> in 1788 "for beginners". It's one of the most famous openings in piano music.</p>
+        <p>Here are its first four bars. The right hand plays a singing melody, with a quick <b>sixteenth-note</b> turn at the end of bars 2 and 4. The left hand plays an <b>Alberti bass</b> around Middle C: bottom, top, middle, top.</p>`,
+      },
+      {
+        t: 'play', title: 'Left hand alone',
+        say: 'Alberti bass, bottom, top, middle, top. Keep it soft and even.',
+        ...K545, rh: undefined, names: true, tempo: 72, reps: 2,
+      },
+      {
+        t: 'play', title: 'Right hand alone',
+        say: 'Sing the melody. The sixteenths are quick but light.',
+        ...K545, lh: undefined, names: true, tempo: 72, reps: 2,
+      },
+      {
+        t: 'play', title: 'Dress rehearsal',
+        say: 'Both hands, with hints. Melody on top, left hand quieter.',
+        ...K545, tempo: 76, song: true,
+      },
+      performance({ ...K545, keyLabels: 'none', tempo: 80 }),
+    ],
+  },
+);
 
 // ---------------------------------------------------------------- Words
 // The hymn words under each melody, one syllable per note: "-" joins a word
