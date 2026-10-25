@@ -41,7 +41,8 @@ export function songbook() {
 function barsPerLine(step) {
   const [num, den] = (step.time || '4/4').split('/').map(Number);
   const perBar = num * (4 / den);
-  return perBar <= 1.5 ? 6 : 4;
+  // Words need room: four-beat bars with lyrics go three to a line.
+  return perBar <= 1.5 ? 6 : step.lyrics && perBar >= 4 ? 3 : 4;
 }
 
 // The first verse goes under the notes: syllables by event index on the melody staff.

@@ -72,7 +72,7 @@ export function renderStaff(el, opts) {
   const hasMarks = staves.some((s, si) => s.events.some((e) => e.marks || (si > 0 && e.slurStart)));
   // Printed songs: words under the melody, one line per time the note is sung.
   const lyricRows = opts.lyrics ? Math.max(0, ...[...opts.lyrics.values()].map((l) => l.length)) * 17 : 0;
-  const height = lineH + (showNames ? 20 : 0) + (opts.showFingers ? 12 : 0) + (hasMarks ? 28 : 0) + lyricRows;
+  const height = lineH + (showNames ? (grand ? 30 : 20) : 0) + (opts.showFingers ? 12 : 0) + (hasMarks ? 28 : 0) + lyricRows;
   renderer.resize(width, height);
   const ctx = renderer.getContext();
   ctx.setFont('Inter', 10);
@@ -87,6 +87,7 @@ export function renderStaff(el, opts) {
   const done = opts.done || new Set();
 
   const drawn = staves.map(() => new Map()); // event index -> StaveNote, for ties and slurs
+  let melodyFloor = 0; // bottom line of the melody staff
   let x = 5;
   for (let b = from; b < to; b++) {
     const w = (usable * weights[b - from]) / weightSum + (b === from ? firstExtra : 0);
@@ -101,6 +102,7 @@ export function renderStaff(el, opts) {
       if (measures[si].repeatEnd.has(b)) st.setEndBarType(VF.Barline.type.REPEAT_END);
       else if (b === barCount - 1) st.setEndBarType(VF.Barline.type.END);
       st.setContext(ctx).draw();
+      if (si === 0) melodyFloor = st.getYForLine(4);
       return st;
     });
     if (grand && b === from) {
@@ -142,9 +144,7 @@ export function renderStaff(el, opts) {
             const label = ev.notes.map((nm) => nm.replace(/-?\d$/, '').replace('#', '♯').replace('b', '♭')).join('');
             n.addModifier(new VF.Annotation(label).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Inter', 11), 0);
           }
-          if (si === 0) (opts.lyrics?.get(ev.index) || []).forEach((text) => {
-            n.addModifier(new VF.Annotation(text || ' ').setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM).setFont('Georgia', 12), 0);
-          });
+
         }
         const isCur = cur.staff === si && cur.index === ev.index;
         const isDone = done.has(`${si}:${ev.index}`);
@@ -198,6 +198,22 @@ export function renderStaff(el, opts) {
       }
     });
   });
+
+  // Words on one baseline under the melody, clear of its lowest note.
+  if (opts.lyrics) {
+    const notes = [...drawn[0].entries()];
+    const lowest = Math.max(melodyFloor + 6, ...notes.map(([, n]) => { const bb = n.getBoundingBox(); return bb ? bb.getY() + bb.getH() : 0; }));
+    const base = lowest + (hasMarks ? 34 : 18) + (showNames ? 16 : 0);
+    ctx.save();
+    ctx.setFont('Georgia', 12.5);
+    notes.forEach(([index, n]) => (opts.lyrics.get(index) || []).forEach((text, row) => {
+      if (!text) return;
+      const w = ctx.measureText(text).width;
+      const head = n.getNoteHeadBeginX ? (n.getNoteHeadBeginX() + n.getNoteHeadEndX()) / 2 : n.getAbsoluteX() + 5;
+      ctx.fillText(text, head - w / 2, base + row * 17);
+    }));
+    ctx.restore();
+  }
 
   const svg = el.querySelector('svg');
   if (svg) {
