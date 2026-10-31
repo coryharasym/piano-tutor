@@ -127,3 +127,39 @@ export class NoteTracker {
     return null;
   }
 }
+
+// Check expected fundamentals instead of folding every overtone into chroma.
+// Local peaks reject neighbouring semitones; amplitude (not squared energy)
+// allows a softer hand to remain audible beneath the melody.
+export function spectrumHasNotes(db, sampleRate, fftSize, midis) {
+  const notes = [...new Set(midis)].sort((a, b) => a - b);
+  if (!notes.length) return false;
+  const hz = sampleRate / fftSize;
+  const peaks = [];
+  for (let i = 2; i < db.length - 1; i++) {
+    if (!Number.isFinite(db[i]) || db[i] < -85 || db[i] <= db[i - 1] || db[i] < db[i + 1]) continue;
+    const shift = (db[i - 1] - db[i + 1]) / (2 * (db[i - 1] - 2 * db[i] + db[i + 1]));
+    peaks.push({ freq: (i + (Number.isFinite(shift) ? shift : 0)) * hz, amp: 10 ** (db[i] / 20) });
+  }
+  const strongest = Math.max(0, ...peaks.map(p => p.amp));
+  const at = (freq, relative = 0.055) => peaks.find(p => Math.abs(1200 * Math.log2(p.freq / freq)) < 35 && p.amp >= strongest * relative);
+  const frequencies = notes.map(m => 440 * 2 ** ((m - 69) / 12));
+  return frequencies.every((freq, index) => {
+    // Close notes can merge in the fundamental's FFT lobe. Two matching
+    // upper partials can resolve the quieter note without lowering the gate.
+    if (!at(freq)) return !!at(freq * 2, 0.015) && !!at(freq * 3, 0.015) && frequencies.every((other, j) => j === index || [2, 3].every(h => {
+      const ratio = freq * h / other;
+      return Math.abs(1200 * Math.log2(ratio / Math.round(ratio))) >= 35;
+    }));
+    // A fifth can coincide with a lower note's third harmonic. Require an
+    // independent partial in that case. Octaves cannot be reliably separated
+    // from overtones using a single microphone spectrum alone.
+    const overlaps = f => frequencies.slice(0, index).some(low => {
+      const ratio = f / low, harmonic = Math.round(ratio);
+      return harmonic >= 2 && Math.abs(1200 * Math.log2(ratio / harmonic)) < 35;
+    });
+    if (!overlaps(freq)) return true;
+    const independent = [2, 3, 4].filter(h => !overlaps(freq * h));
+    return independent.length > 0 && independent.some(h => at(freq * h, 0.015));
+  });
+}

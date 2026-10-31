@@ -1,9 +1,9 @@
 // Microphone listening: turns what the phone hears into "note played" events.
 
-import { detectPitch, rms, chroma, NoteTracker } from './pitch.js';
+import { detectPitch, rms, spectrumHasNotes, NoteTracker } from './pitch.js';
 import { piano } from './audio.js';
 
-class Listener {
+export class Listener {
   constructor() {
     this.active = false;
     this.stream = null;
@@ -43,11 +43,14 @@ class Listener {
     this.ctx = ctx;
     const src = ctx.createMediaStreamSource(this.stream);
     this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = 4096;
-    this.analyser.smoothingTimeConstant = 0.2;
+    this.analyser.fftSize = 8192;
+    this.analyser.smoothingTimeConstant = 0;
     src.connect(this.analyser);
     this.time = new Float32Array(2048);
     this.freq = new Float32Array(this.analyser.frequencyBinCount);
+    this.clearRecent();
+    this.tracker = new NoteTracker();
+    this.consumedChord = null;
     this.active = true;
     this.timer = setInterval(() => this.tick(), 23);
     return true;
@@ -55,6 +58,7 @@ class Listener {
 
   stop() {
     this.active = false;
+    this.clearRecent();
     clearInterval(this.timer);
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
@@ -72,6 +76,8 @@ class Listener {
     const now = performance.now();
     this.history.push({ t: now, level });
     while (this.history.length && now - this.history[0].t > 3000) this.history.shift();
+    const gate = Math.max(0.003, this.tracker.noiseFloor * 3.5);
+    if (level < gate || (level > this.tracker.prevLevel * 1.6 && level - this.tracker.prevLevel > gate * 0.5)) this.consumedChord = null;
     this.onLevel.forEach((fn) => fn(level));
     if (performance.now() < this.muteUntil) {
       this.tracker.push({ level: 0, pitch: null });
@@ -89,22 +95,30 @@ class Listener {
     }
   }
 
-  // Do the required pitch classes sound together right now, or were they
-  // all heard one after another in the last couple of seconds?
-  chordHeard(pcs) {
-    if (!this.active) return false;
+  // Stable, current spectrum evidence; rolled-note fallback is scoped to
+  // the current exercise moment and disabled for timed Flow scoring.
+  chordHeard(midis, { allowRecent = true } = {}) {
     const now = performance.now();
-    const seen = new Set(this.recent.filter((r) => now - r.t < 2500).map((r) => r.midi % 12));
-    if (pcs.every((pc) => seen.has(pc))) return true;
-    if (performance.now() < this.muteUntil) return false;
+    if (!this.active || now < this.muteUntil) {
+      this.chordFrames = 0;
+      return false;
+    }
+    const key = [...new Set(midis)].sort((a, b) => a - b).join(',');
+    if (key === this.consumedChord) return false;
+    if (key !== this.chordKey) { this.chordKey = key; this.chordFrames = 0; }
+    const seen = new Set(this.recent.filter(r => now - r.t < 2500).map(r => r.midi));
+    if (allowRecent && midis.length && midis.every(m => seen.has(m))) return true;
     this.analyser.getFloatFrequencyData(this.freq);
-    const c = chroma(this.freq, this.rate, this.analyser.fftSize);
-    const sorted = [...c].sort((x, y) => y - x);
-    const cutoff = Math.max(0.18, sorted[pcs.length + 1] ?? 0);
-    return rms(this.time) > 0.01 && pcs.every((pc) => c[pc] >= cutoff);
+    const audible = rms(this.time) > Math.max(0.003, this.tracker.noiseFloor * 3.5);
+    const heard = audible && spectrumHasNotes(this.freq, this.rate, this.analyser.fftSize, midis);
+    this.chordFrames = heard ? (this.chordFrames || 0) + 1 : 0;
+    return this.chordFrames >= 2;
   }
 
-  clearRecent() { this.recent = []; }
+  clearRecent() {
+    if (this.chordFrames >= 2) this.consumedChord = this.chordKey;
+    this.recent = []; this.chordFrames = 0; this.chordKey = '';
+  }
 
   // How loud a note heard at time t was at its start, and how much of that
   // was still sounding 300 ms later (short for staccato, long for legato).

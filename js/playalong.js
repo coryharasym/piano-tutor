@@ -109,7 +109,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     if (hit) {
       hit.state = 'hit';
       kb.flash(hit.midi, 'good');
-      if (prefs.mode === 'wait' && items.every((it) => it.moment !== nextMoment || it.state === 'hit' || it.auto)) nextMoment++;
+      if (prefs.mode === 'wait' && items.every((it) => it.moment !== nextMoment || it.state === 'hit' || it.auto)) { nextMoment++; listener.clearRecent(); }
     } else {
       // A note still ringing from a hit isn't a mistake.
       const ringing = items.some((it) => it.state === 'hit' && matches(midi, it.midi, { anyOctave, source }) && now - it.beat < it.beats + 0.5);
@@ -119,15 +119,20 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   const onNote = (m) => input(m, 'mic');
   listener.onNote.add(onNote);
 
-  // Chords by ear: accept when the mic hears all the letters together.
+  // Both modes use the same simultaneous-note check. Flow only considers
+  // the closest eligible moment and never uses the rolled-note history.
   const chordTimer = setInterval(() => {
-    if (!running || finished || !listener.active) return;
-    const m = moments[nextMoment];
-    if (prefs.mode !== 'wait' || !m || m.items.length < 2) return;
-    const want = items.filter((it) => it.moment === nextMoment && !it.auto);
-    if (want.length > 1 && listener.chordHeard(want.map((it) => it.midi % 12))) {
-      want.forEach((it) => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
-      nextMoment++;
+    if (!running || finished || !listener.active || beat < -0.5) return;
+    const now = beat - MIC_LATENCY * bps();
+    const candidates = prefs.mode === 'wait' ? [nextMoment] : moments
+      .map((m, i) => ({ i, distance: Math.abs(m.beat - now) }))
+      .filter(m => m.distance <= WINDOW * bps() && items.some(it => it.moment === m.i && !it.auto && it.state === 'pending'))
+      .sort((a, b) => a.distance - b.distance).map(m => m.i).slice(0, 1);
+    const target = candidates[0];
+    const want = items.filter(it => it.moment === target && !it.auto);
+    if (want.length > 1 && want.some(it => it.state === 'pending') && listener.chordHeard(want.map(it => it.midi), { allowRecent: prefs.mode === 'wait' })) {
+      want.filter(it => it.state === 'pending').forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
+      if (prefs.mode === 'wait') nextMoment++;
       listener.clearRecent();
     }
   }, 80);
@@ -144,7 +149,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
         if (m && next > m.beat) next = m.beat; // hold here until it's played
       } else {
         const late = WINDOW * bps();
-        items.forEach((it) => { if (it.state === 'pending' && !it.auto && next - it.beat > late) it.state = 'missed'; });
+        items.forEach((it) => { if (it.state === 'pending' && !it.auto && next - MIC_LATENCY * bps() - it.beat > late) it.state = 'missed'; });
       }
       beat = next;
       // The other hand plays itself as its notes land.
