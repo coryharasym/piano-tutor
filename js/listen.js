@@ -2,6 +2,7 @@
 
 import { detectPitch, rms, spectrumHasNotes, NoteTracker } from './pitch.js';
 import { piano } from './audio.js';
+import { buildChordModel, profileCompatible } from './chord-profile.js';
 
 export class Listener {
   constructor() {
@@ -16,6 +17,9 @@ export class Listener {
     this.timer = null;
     this.tuning = 0; // semitones the player's piano (or this phone) sounds sharp
     this.onRaw = new Set(); // unrounded, untuned pitch readings, for tuning
+    this.onSpectrum = new Set();
+    this.calibration = null;
+    this.calibrating = false;
     this.history = []; // [{t, level}] for the last few seconds, for loudness and length
 
 
@@ -86,8 +90,13 @@ export class Listener {
     const raw = level > 0.003 ? detectPitch(this.time, a.context.sampleRate, { maxFreq: 2400 }) : null;
     if (raw && raw.clarity > 0.9) this.onRaw.forEach((fn) => fn(69 + 12 * Math.log2(raw.freq / 440), level));
     const pitch = raw && { ...raw, freq: raw.freq * 2 ** (-this.tuning / 12) };
+    if (this.onSpectrum.size) {
+      a.getFloatFrequencyData(this.freq);
+      const midi = pitch ? 69 + 12 * Math.log2(pitch.freq / 440) : null;
+      this.onSpectrum.forEach(fn => fn({ db: this.freq, midi, clarity: pitch?.clarity || 0, level, now }));
+    }
     const midi = this.tracker.push({ level, pitch });
-    if (midi != null) {
+    if (midi != null && !this.calibrating) {
       const now = performance.now();
       this.recent = this.recent.filter((r) => now - r.t < 2500);
       this.recent.push({ midi, t: now });
@@ -99,7 +108,7 @@ export class Listener {
   // the current exercise moment and disabled for timed Flow scoring.
   chordHeard(midis, { allowRecent = true } = {}) {
     const now = performance.now();
-    if (!this.active || now < this.muteUntil) {
+    if (!this.active || this.calibrating || now < this.muteUntil) {
       this.chordFrames = 0;
       return false;
     }
@@ -107,10 +116,19 @@ export class Listener {
     if (key === this.consumedChord) return false;
     if (key !== this.chordKey) { this.chordKey = key; this.chordFrames = 0; }
     const seen = new Set(this.recent.filter(r => now - r.t < 2500).map(r => r.midi));
-    if (allowRecent && midis.length && midis.every(m => seen.has(m))) return true;
+    const calibrated = profileCompatible(this.calibration, this.analyser.context.sampleRate, this.tuning);
+    const modelKey = `${key}:${calibrated}`;
+    if (this.modelProfile !== this.calibration || this.modelKey !== modelKey) {
+      this.modelProfile = this.calibration;
+      this.modelKey = modelKey;
+      this.chordModel = calibrated ? buildChordModel(this.calibration, midis) : null;
+    }
+    const octavePair = midis.some((m, i) => midis.some((n, j) => j !== i && n !== m && (n - m) % 12 === 0));
+    if (!this.chordModel && !octavePair && allowRecent && midis.length && midis.every(m => seen.has(m))) return true;
     this.analyser.getFloatFrequencyData(this.freq);
     const audible = rms(this.time) > Math.max(0.003, this.tracker.noiseFloor * 3.5);
-    const heard = audible && spectrumHasNotes(this.freq, this.rate, this.analyser.fftSize, midis);
+    const heard = audible && (this.chordModel ? this.chordModel(this.freq)
+      : spectrumHasNotes(this.freq, this.rate, this.analyser.fftSize, midis));
     this.chordFrames = heard ? (this.chordFrames || 0) + 1 : 0;
     return this.chordFrames >= 2;
   }

@@ -30,7 +30,7 @@ function read() {
 export const store = {
   data: read(),
   save() {
-    try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch { /* private mode */ }
+    try { localStorage.setItem(KEY, JSON.stringify(this.data)); return true; } catch { return false; /* private mode or full storage */ }
   },
   markDone(id) { this.data.done[id] = true; this.save(); },
   isDone(id) { return !!this.data.done[id]; },
@@ -43,11 +43,19 @@ export const store = {
   },
   reset() { this.data = structuredClone(defaults); this.save(); },
   // A backup file: everything above, to keep or move to another device.
-  backup() { return JSON.stringify({ app: 'piano-tutor', version: 1, saved: new Date().toISOString(), data: this.data }, null, 1); },
+  backup() {
+    // A microphone fingerprint belongs to this phone and placement, not to
+    // the progress file someone might restore on a different device.
+    const { keyboardCalibration, ...data } = this.data;
+    return JSON.stringify({ app: 'piano-tutor', version: 1, saved: new Date().toISOString(), data }, null, 1);
+  },
   restore(text) {
     const file = JSON.parse(text);
     if (file?.app !== 'piano-tutor' || typeof file.data?.done !== 'object') throw new Error('Not a Piano Tutor backup');
-    this.data = { ...structuredClone(defaults), ...file.data, settings: { ...defaults.settings, ...file.data.settings } };
+    const localCalibration = this.data.keyboardCalibration;
+    const { keyboardCalibration, ...data } = file.data;
+    this.data = { ...structuredClone(defaults), ...data, settings: { ...defaults.settings, ...data.settings } };
+    if (localCalibration) this.data.keyboardCalibration = localCalibration;
     this.save();
   },
 };
