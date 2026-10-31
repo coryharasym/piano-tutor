@@ -12,7 +12,7 @@ import { icons } from './icons.js';
 import { mountPlayAlong, SPEEDS } from './playalong.js';
 import { mountPrint, printOne, songbook } from './print.js';
 import { mountSheet } from './sheet.js';
-import { showCalibration } from './calibration.js';
+import { showCalibration, calibrationCount } from './calibration.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -212,7 +212,7 @@ function showSettings() {
     <label class="row"><span>Show song words<small>The lyrics of hymns and songs, as you play</small></span><input type="checkbox" ${s.lyrics ? 'checked' : ''} data-lyrics></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
-    <div class="row"><span>Recognise both hands<small>Learn ten C-position keys for octave pairs and chords. Keep the phone in its usual place.</small></span><button class="pill" data-calibrate>Calibrate keyboard</button></div>
+    <div class="row"><span>Keyboard calibration<small>${calibrationCount() ? `${calibrationCount()} keys saved on this device. Used automatically in every lesson.` : 'Set up once here for octave pairs and chords. Your learned keys are saved.'}</small></span><button class="pill" data-calibrate>${calibrationCount() ? 'Manage setup' : 'Set up keyboard'}</button></div>
     <div class="row"><span>Back up progress<small>Save your progress to a file, or load it on another device</small></span><span class="row-btns"><button class="pill" data-backup>Back up</button><button class="pill" data-restore>Restore</button></span></div>
     <input type="file" accept=".json,application/json" data-file hidden>
     <button class="text-btn danger" data-reset>Reset all progress</button>
@@ -566,7 +566,6 @@ const sung = (step) => (verseOf(step) > 1 ? { ...step, lyrics: step.verses[verse
 function renderPlay(step, ctx) {
   const practice = buildPractice(step);
   const { moments, staves } = practice;
-  const chordNotes = [...new Set(moments.filter(m => m.items.length > 1).flatMap(m => m.items.map(it => it.midi)))];
   const reps = step.reps || 1;
   const labelsAllowed = step.keyLabels || 'c';
   const canPlayAlong = !step.anyNote && !step.anyOrder && !step.noDemo && (step.song || moments.length >= 6);
@@ -577,7 +576,6 @@ function renderPlay(step, ctx) {
       <p class="say">${step.say}</p>
       <div class="play-tools">
         <span class="reps"></span>
-        ${chordNotes.length && !step.anyOrder ? '<button class="pill" data-calibrate>Calibrate</button>' : ''}
         ${step.anyNote || step.noDemo ? '' : `<span class="listen-group"><button class="pill" data-demo>${icons.ear}<span>Listen</span></button><button class="pill speed" data-speed aria-label="Listening speed"></button></span>`}
         ${step.verses && store.setting('lyrics') ? `<button class="pill" data-verse aria-label="Change verse">Verse ${verseOf(step)}</button>` : ''}
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
@@ -825,11 +823,6 @@ function renderPlay(step, ctx) {
     demo.done.then(() => { if (demo) stopDemo(); });
   });
   disposers.push(stopDemo);
-  $('[data-calibrate]', el)?.addEventListener('click', () => {
-    stopDemo();
-    pause = true;
-    showCalibration(chordNotes, () => { pause = false; reset(); });
-  });
 
   $('[data-along]', el)?.addEventListener('click', () => { piano.unlock(); go(ctx.playAlong); });
   $('[data-verse]', el)?.addEventListener('click', () => { store.setting('verse', (verseOf(step) % verseCount(step)) + 1); route(); });
