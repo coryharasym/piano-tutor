@@ -43,3 +43,30 @@ Lessons live in `js/lessons/unit*.js`. Notes use a compact format: `note/duratio
 
 - Piano samples: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander Holm (CC BY 3.0), via [`@audio-samples/piano-mp3-velocity8`](https://www.npmjs.com/package/@audio-samples/piano-mp3-velocity8), trimmed for size.
 - Sheet music rendering: [VexFlow](https://www.vexflow.com) 4.2.3 (MIT).
+
+### Chapter notes
+
+Each unit has a **Chapter notes & PDF** link. The home header opens all chapters,
+with downloads for each chapter and the complete course. Lesson headers also link
+to their chapter. Notes are available at any stage; downloads are real PDF files
+and can be printed or saved with the iPhone share menu.
+
+The notes use the lesson explanations, diagrams, review answers and practice tasks
+from the curriculum, plus an opening notation example per lesson and chapter
+self-assessment checklists. All recital choices are included, independent of a
+learner's saved selection. Full scores remain in the Songbook.
+
+After changing lessons, illustrations, notation, or notes styling, regenerate and
+commit the eight PDFs and `notes/source.sha256`:
+
+```sh
+npm install --no-save playwright
+npx playwright install chromium
+npm run build:notes
+npm test
+```
+
+The normal test suite checks PDF signatures, chapter coverage and a source
+fingerprint so curriculum changes cannot silently leave the downloads out of date.
+PDF generation uses local assets and a temporary local server; the app needs no
+runtime PDF service or additional browser dependency.

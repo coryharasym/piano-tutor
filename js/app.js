@@ -12,6 +12,7 @@ import { icons } from './icons.js';
 import { mountPlayAlong, SPEEDS } from './playalong.js';
 import { mountPrint, printOne, songbook } from './print.js';
 import { mountSheet } from './sheet.js';
+import { mountNotes } from './notes.js';
 import { showCalibration, calibrationCount } from './calibration.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -37,6 +38,10 @@ function route() {
   if (view === 'play' && findLesson(id)) return showPlayAlong(id, Number(step) || 0);
   if (view === 'print' && printOne(id, Number(step) || 0)) return showPrint(id, Number(step) || 0);
   if (view === 'songbook') return showSongbook();
+  if (view === 'notes' && (!id || id === 'all' || UNITS.some(u => u.id === id))) {
+    keepAwake(false);
+    return mountNotes(app, { id: id || 'all', onBack: () => go('#/') });
+  }
   showHome();
 }
 const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
@@ -124,6 +129,7 @@ function showHome() {
       <div class="head-actions">
         <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
         <button class="pill" data-songbook>${icons.book}<span>Songbook</span></button>
+        <button class="pill" data-notes>${icons.book}<span>Chapter notes</span></button>
         <button class="icon-btn" data-settings aria-label="Settings">${icons.gear}</button>
       </div>
     </header>
@@ -169,7 +175,9 @@ function showHome() {
     const sec = h(`<div class="unit">
       <div class="unit-head"><span class="unit-num ${ribbon ? 'ribbon' : ''}">${ribbon ? icons.ribbon : ui + 1}</span><div><h2>${u.title}</h2><p class="muted">${u.blurb}</p></div>
       <span class="unit-progress">${done}/${u.lessons.length}</span></div>
+      <div class="unit-notes"><button class="text-btn" data-chapter-notes>${icons.book} Chapter notes &amp; PDF</button></div>
       <div class="lesson-row"></div></div>`);
+    $('[data-chapter-notes]', sec).addEventListener('click', () => go(`#/notes/${u.id}`));
     const row = $('.lesson-row', sec);
     u.lessons.forEach((l, li) => {
       const isDone = store.isDone(l.id);
@@ -186,6 +194,7 @@ function showHome() {
   HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
   units.appendChild(hymns);
 
+  $('[data-notes]', el).addEventListener('click', () => go('#/notes/all'));
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
   el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
@@ -395,6 +404,11 @@ function showLesson(id, stepIndex) {
     </header>
     <section class="stage"></section>
   </main>`);
+  if (UNITS.some(u => u.id === unit.id)) {
+    const notesButton = h(`<button class="icon-btn" aria-label="Chapter notes">${icons.book}</button>`);
+    notesButton.addEventListener('click', () => go(`#/notes/${unit.id}`));
+    $('.top-actions', el).appendChild(notesButton);
+  }
   $('.top-actions', el).appendChild(micButton());
 
   const goStep = (i) => go(`#/lesson/${id}/${i}`);
