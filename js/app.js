@@ -704,6 +704,7 @@ function renderPlay(step, ctx) {
   }
 
   function advance() {
+    listener.clearRecent();
     mi++;
     satisfied = new Set();
     if (step.hint === false) showTargets = false;
@@ -763,9 +764,9 @@ function renderPlay(step, ctx) {
   const chordTimer = setInterval(() => {
     if (finished || pause || !listener.active) return;
     const m = moments[mi];
-    if (!m || m.items.length < 2 || m.anyOrder) return;
-    const pcs = m.items.map((it) => it.midi % 12);
-    if (listener.chordHeard(pcs)) {
+    if (!m || m.items.length < 2 || step.anyOrder) return;
+    const midis = m.items.map((it) => it.midi);
+    if (listener.chordHeard(midis)) {
       m.items.forEach((it) => kb.flash(it.midi, 'good'));
       listener.clearRecent();
       advance();
