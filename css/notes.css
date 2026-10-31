@@ -1,0 +1,53 @@
+.notes-view { padding-bottom: 40px; }
+.notes-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px max(16px, calc((100% - 940px) / 2)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.notes-bar h1 { font-size: 1.15rem; }
+.notes-bar > div { flex: 1; min-width: 140px; }
+.notes-view a.pill { text-decoration: none; display: inline-flex; justify-content: center; }
+.notes-help, .notes-index { max-width: 850px; margin: 24px auto; padding: 0 20px; }
+.notes-help { color: var(--ink-soft); font-size: .9rem; }
+.notes-index h2 { font-size: 1.15rem; margin-bottom: 12px; }
+.notes-index .pill { margin: 0 6px 8px 0; }
+.notes-pages { max-width: 850px; margin: auto; padding: 0 16px; }
+.notes-chapter { background: white; padding: 36px; margin: 20px 0; border: 1px solid var(--line); border-radius: 12px; font-size: 15px; line-height: 1.55; }
+.notes-chapter-head { border-bottom: 3px solid var(--accent); padding-bottom: 16px; margin-bottom: 24px; }
+.notes-chapter h1 { font: 600 30px/1.2 Georgia, serif; margin-bottom: 8px; }
+.notes-chapter h2 { font-size: 19px; margin: 24px 0 10px; break-after: avoid; }
+.notes-chapter h3 { font-size: 15px; margin: 14px 0 5px; break-after: avoid; }
+.notes-lesson { border-top: 1px solid #ddd; margin-top: 24px; }
+.notes-summary, .notes-caption { color: #52605f; }
+.notes-summary { break-after: avoid; }
+.notes-block, .notes-figure, .notes-checklist { break-inside: avoid; }
+.notes-figure { margin: 12px 0; text-align: center; }
+.notes-figure .fig { width: auto; max-width: 100%; height: auto; max-height: 180px; display: inline-block; }
+.notes-figure figcaption, .notes-caption { font-size: 11px; }
+.notes-example svg { width: 100%; height: auto; display: block; }
+.notes-review { border-left: 2px solid #cbc4b6; padding-left: 12px; }
+.notes-task h3 { color: #096b5f; }
+.notes-lesson-list ol { columns: 2; column-gap: 28px; }
+.notes-lesson-list li { break-inside: avoid; }
+.notes-checklist ul { padding: 0; list-style: none; }
+.notes-checklist li { display: flex; gap: 10px; margin-bottom: 10px; }
+.notes-box { border: 1px solid #52605f; width: 13px; height: 13px; flex: none; margin-top: 5px; }
+.notes-writing { height: 40px; border-bottom: 1px solid #bbb; }
+.unit-notes { margin: 0 0 10px 0; }
+.unit-notes .text-btn { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) {
+  .notes-chapter { padding: 20px 16px; }
+  .notes-lesson-list ol { columns: 1; }
+  .notes-bar { gap: 8px; }
+  .notes-bar .pill { padding: 8px 12px; }
+}
+@page { size: Letter; margin: .6in; }
+@media print {
+  html, body { height: auto; background: white; }
+  .notes-bar, .notes-help, .notes-index { display: none !important; }
+  .notes-view, .notes-pages { padding: 0; max-width: none; }
+  .notes-chapter { border: 0; border-radius: 0; padding: 0; margin: 0; font: 10.5pt/1.42 Arial, sans-serif; break-after: page; }
+  .notes-chapter:last-child { break-after: auto; }
+  .notes-chapter h1 { font-size: 25pt; }
+  .notes-chapter h2 { font-size: 14pt; margin: 18px 0 8px; }
+  .notes-chapter h3 { font-size: 10.5pt; margin-top: 10px; }
+  .notes-figure .fig { max-height: 145px; }
+  .notes-chapter p { orphans: 3; widows: 3; }
+  .notes-chapter * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
