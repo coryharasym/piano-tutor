@@ -9,6 +9,7 @@ import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
+import { showCalibration } from './calibration.js';
 
 const LOOKAHEAD = 4;        // beats visible above the keyboard
 const WINDOW = 0.38;        // seconds either side of a note that still count as "on time"
@@ -45,6 +46,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       </div>
       ${twoHands ? '<button class="pill hand" data-hand aria-label="Which hand you play"></button>' : ''}
       <div class="top-actions"></div>
+      ${moments.some(m => m.items.length > 1) ? '<button class="pill" data-calibrate>Calibrate</button>' : ''}
       <button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>
     </header>
     <section class="fall-wrap">
@@ -92,9 +94,19 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
 
   // ---- input
   function input(midi, source) {
+    if (listener.calibrating && source === 'mic') return;
     if (!running || finished || beat < -0.5) { kb.flash(midi, 'press'); return; }
     const anyOctave = store.setting('anyOctave');
     const now = beat - (source === 'mic' ? MIC_LATENCY * bps() : 0);
+    if (source === 'mic') {
+      const target = prefs.mode === 'wait' ? nextMoment : moments
+        .map((m, i) => ({ i, distance: Math.abs(m.beat - now) }))
+        .filter(m => m.distance <= WINDOW * bps())
+        .sort((a, b) => a.distance - b.distance)[0]?.i;
+      if (items.filter(it => it.moment === target && !it.auto).length > 1) {
+        kb.flash(midi, 'press'); return;
+      }
+    }
     let hit = null;
     if (prefs.mode === 'wait') {
       const m = moments[nextMoment];
@@ -118,6 +130,11 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   }
   const onNote = (m) => input(m, 'mic');
   listener.onNote.add(onNote);
+  el.querySelector('[data-calibrate]')?.addEventListener('click', () => {
+    running = false;
+    const notes = [...new Set(mine().map(it => it.midi))];
+    showCalibration(notes, () => reset());
+  });
 
   // Both modes use the same simultaneous-note check. Flow only considers
   // the closest eligible moment and never uses the rolled-note history.

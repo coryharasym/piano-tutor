@@ -12,6 +12,7 @@ import { icons } from './icons.js';
 import { mountPlayAlong, SPEEDS } from './playalong.js';
 import { mountPrint, printOne, songbook } from './print.js';
 import { mountSheet } from './sheet.js';
+import { showCalibration } from './calibration.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -20,6 +21,7 @@ const h = (html) => { const t = document.createElement('template'); t.innerHTML 
 piano.setVolume(store.setting('volume'));
 Object.entries(store.data.recitals || {}).forEach(([unit, piece]) => chooseRecital(unit, piece));
 listener.tuning = store.setting('tuning') || 0;
+listener.calibration = store.data.keyboardCalibration || null;
 
 // ---------------------------------------------------------------- routing
 window.addEventListener('hashchange', route);
@@ -210,6 +212,7 @@ function showSettings() {
     <label class="row"><span>Show song words<small>The lyrics of hymns and songs, as you play</small></span><input type="checkbox" ${s.lyrics ? 'checked' : ''} data-lyrics></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
+    <div class="row"><span>Recognise both hands<small>Learn ten C-position keys for octave pairs and chords. Keep the phone in its usual place.</small></span><button class="pill" data-calibrate>Calibrate keyboard</button></div>
     <div class="row"><span>Back up progress<small>Save your progress to a file, or load it on another device</small></span><span class="row-btns"><button class="pill" data-backup>Back up</button><button class="pill" data-restore>Restore</button></span></div>
     <input type="file" accept=".json,application/json" data-file hidden>
     <button class="text-btn danger" data-reset>Reset all progress</button>
@@ -224,6 +227,7 @@ function showSettings() {
   $('[data-lyrics]', dlg).addEventListener('change', (e) => { store.setting('lyrics', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
   $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
+  $('[data-calibrate]', dlg).addEventListener('click', () => { close(); showCalibration(); });
   $('[data-backup]', dlg).addEventListener('click', () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([store.backup()], { type: 'application/json' }));
@@ -242,6 +246,8 @@ function showSettings() {
       if (!confirm('Replace the progress on this device with the backup?')) return;
       store.restore(text);
       piano.setVolume(store.setting('volume'));
+      listener.tuning = store.setting('tuning') || 0;
+      listener.calibration = store.data.keyboardCalibration || null;
       close();
       route();
     } catch {
@@ -249,7 +255,10 @@ function showSettings() {
     }
   });
   $('[data-reset]', dlg).addEventListener('click', () => {
-    if (confirm('Clear all lesson progress on this device?')) { store.reset(); close(); route(); }
+    if (confirm('Clear all lesson progress on this device?')) {
+      store.reset(); listener.calibration = null; listener.tuning = 0;
+      close(); route();
+    }
   });
 }
 
@@ -557,6 +566,7 @@ const sung = (step) => (verseOf(step) > 1 ? { ...step, lyrics: step.verses[verse
 function renderPlay(step, ctx) {
   const practice = buildPractice(step);
   const { moments, staves } = practice;
+  const chordNotes = [...new Set(moments.filter(m => m.items.length > 1).flatMap(m => m.items.map(it => it.midi)))];
   const reps = step.reps || 1;
   const labelsAllowed = step.keyLabels || 'c';
   const canPlayAlong = !step.anyNote && !step.anyOrder && !step.noDemo && (step.song || moments.length >= 6);
@@ -567,6 +577,7 @@ function renderPlay(step, ctx) {
       <p class="say">${step.say}</p>
       <div class="play-tools">
         <span class="reps"></span>
+        ${chordNotes.length && !step.anyOrder ? '<button class="pill" data-calibrate>Calibrate</button>' : ''}
         ${step.anyNote || step.noDemo ? '' : `<span class="listen-group"><button class="pill" data-demo>${icons.ear}<span>Listen</span></button><button class="pill speed" data-speed aria-label="Listening speed"></button></span>`}
         ${step.verses && store.setting('lyrics') ? `<button class="pill" data-verse aria-label="Change verse">Verse ${verseOf(step)}</button>` : ''}
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
@@ -673,6 +684,7 @@ function renderPlay(step, ctx) {
   // ---- input
   let pause = false;
   function input(midi, source) {
+    if (listener.calibrating && source === 'mic') return;
     if (finished || pause) { kb.flash(midi, 'press'); return; }
     if (step.anyNote) {
       kb.flash(midi, 'good');
@@ -680,11 +692,16 @@ function renderPlay(step, ctx) {
       return complete();
     }
     const m = moments[mi];
+    // A monophonic pitch reading cannot prove an octave pair or chord.
+    // Score microphone chords atomically through chordHeard instead.
+    if (source === 'mic' && m.items.length > 1 && !step.anyOrder) {
+      kb.flash(midi, 'press');
+      return;
+    }
     const anyOctave = store.setting('anyOctave');
-    // Chords confuse pitch detection about octaves, so the mic only needs the letter there.
-    const loose = source === 'mic' && m.items.length > 1;
-    const ok = (it) => (loose ? (midi - it.midi) % 12 === 0 : matches(midi, it.midi, { anyOctave, source }));
-    const k = m.items.findIndex((it, idx) => !satisfied.has(idx) && ok(it));
+    const ok = (it) => matches(midi, it.midi, { anyOctave, source });
+    const exact = m.items.findIndex((it, idx) => !satisfied.has(idx) && it.midi === midi);
+    const k = exact !== -1 ? exact : m.items.findIndex((it, idx) => !satisfied.has(idx) && ok(it));
     if (k === -1) {
       // Already-satisfied notes ringing on are fine; anything else is a gentle miss.
       if (m.items.some(ok)) return;
@@ -766,6 +783,8 @@ function renderPlay(step, ctx) {
     if (!m || m.items.length < 2 || step.anyOrder) return;
     const midis = m.items.map((it) => it.midi);
     if (listener.chordHeard(midis)) {
+      if (step.timed && startedAt == null) startedAt = performance.now();
+      if (expressive) m.items.forEach(item => heard.push({ t: performance.now(), item, dyn: dynAt[mi] }));
       m.items.forEach((it) => kb.flash(it.midi, 'good'));
       listener.clearRecent();
       advance();
@@ -806,6 +825,11 @@ function renderPlay(step, ctx) {
     demo.done.then(() => { if (demo) stopDemo(); });
   });
   disposers.push(stopDemo);
+  $('[data-calibrate]', el)?.addEventListener('click', () => {
+    stopDemo();
+    pause = true;
+    showCalibration(chordNotes, () => { pause = false; reset(); });
+  });
 
   $('[data-along]', el)?.addEventListener('click', () => { piano.unlock(); go(ctx.playAlong); });
   $('[data-verse]', el)?.addEventListener('click', () => { store.setting('verse', (verseOf(step) % verseCount(step)) + 1); route(); });
