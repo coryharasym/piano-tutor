@@ -120,3 +120,35 @@ export function lyricText(str) {
   });
   return lines.filter(Boolean);
 }
+
+// Loop written measures once per pass; the loop replaces printed repeats.
+// Clip held/tied notes at both boundaries and re-strike carry-in notes.
+export function loopBars(step) {
+  const straight = buildPractice({ ...step, lyrics: null,
+    rh: step.rh?.replace(/\|:|:\|/g, ''), lh: step.lh?.replace(/\|:|:\|/g, '') });
+  const [num, den] = (step.time || '4/4').split('/').map(Number);
+  const size = num * 4 / den;
+  const bars = [];
+  for (let start = 0; start < straight.totalBeats - 1e-6;) {
+    const end = Math.min(straight.totalBeats, start + (start === 0 && step.pickup ? step.pickup : size));
+    bars.push({ start, end }); start = end;
+  }
+  return { straight, bars };
+}
+
+export function buildBarLoop(step, first, last) {
+  const { straight, bars } = loopBars(step);
+  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first || last > bars.length) throw new Error('Invalid bar range');
+  const start = bars[first - 1].start, end = bars[last - 1].end;
+  const byBeat = new Map();
+  for (const m of straight.moments) for (const item of m.items) {
+    const stop = Math.min(end, m.beat + item.beats);
+    const onset = Math.max(start, m.beat);
+    if (stop <= onset) continue;
+    const beat = onset - start;
+    if (!byBeat.has(beat)) byBeat.set(beat, []);
+    byBeat.get(beat).push({ ...item, beats: stop - onset });
+  }
+  return { ...straight, lyrics: null, totalBeats: end - start,
+    moments: [...byBeat].sort((a,b) => a[0]-b[0]).map(([beat,items]) => ({beat,items})) };
+}

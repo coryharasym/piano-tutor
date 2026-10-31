@@ -26,3 +26,30 @@ const drill = buildDrill(all);
 assert.equal(drill.steps.length, 2);
 drill.steps.forEach((s) => assert.equal(buildPractice(s).moments.length, 10));
 console.log('practice ok');
+
+
+const { loopBars, buildBarLoop } = await import('../js/practice.js');
+assert.equal(loopBars({rh:'C4/q D4/w',pickup:1}).bars.length,2);
+assert.equal(buildBarLoop({rh:'C4/q D4/w',pickup:1},2,2).moments[0].items[0].midi,62);
+assert.equal(buildBarLoop({rh:'C4/h. D4/h.',time:'6/8'},2,2).totalBeats,3);
+const tiedLoop=buildBarLoop({rh:'C4/w ~C4/h D4/h'},2,2);
+assert.equal(tiedLoop.moments[0].beat,0);
+assert.equal(tiedLoop.moments[0].items[0].beats,2);
+assert.equal(buildBarLoop({rh:'C4/w ~C4/w'},1,1).moments[0].items[0].beats,4);
+assert.equal(buildBarLoop({rh:'|: C4/w D4/w :| E4/w'},1,3).moments.length,3);
+assert.equal(buildBarLoop({rh:'r/w C4/w'},1,1).moments.length,0);
+assert.equal(buildBarLoop({rh:'C4/w r/w'},1,2).totalBeats,8);
+assert.throws(()=>buildBarLoop({rh:'C4/w'},2,1));
+const { HYMNS } = await import('../js/lessons/index.js');
+let selections=0;
+for(const lesson of [...UNITS.flatMap(u=>u.lessons),...HYMNS]) for(const step of lesson.steps) {
+ if(step.t!=='play'||step.anyNote||step.anyOrder) continue;
+ const {bars}=loopBars(step);
+ for(let i=1;i<=bars.length;i++) {
+  const p=buildBarLoop(step,i,i); selections++;
+  for(const m of p.moments) for(const it of m.items) {
+   assert.ok(m.beat>=0 && m.beat+it.beats<=p.totalBeats+1e-6);
+  }
+ }
+}
+console.log(`${selections} course bar selections and loop boundaries passed`);

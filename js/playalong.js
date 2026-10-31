@@ -3,7 +3,7 @@
 //   Flow mode: the music keeps moving; you get a score for notes played on time.
 
 import { Keyboard } from './keyboard.js';
-import { buildPractice, matches, lyricLine, lyricHTML } from './practice.js';
+import { buildPractice, loopBars, buildBarLoop, matches, lyricLine, lyricHTML } from './practice.js';
 import { listener } from './listen.js';
 import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
@@ -18,11 +18,14 @@ const COUNT_IN = 4;         // beats before the first note
 export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'], [1.5, '1½×']];
 
 export function mountPlayAlong(root, step, { micButton, onExit }) {
-  const { moments, lyrics } = buildPractice(step);
-  const items = moments.flatMap((m, mi) => m.items.map((it) => ({ ...it, beat: m.beat, moment: mi, state: 'pending' })));
+  let { moments, lyrics, totalBeats } = buildPractice(step);
+  const bars = loopBars(step).bars;
+  let looping = false, pass = 1;
+  let accompaniment = [];
+  let items = moments.flatMap((m, mi) => m.items.map((it) => ({ ...it, beat: m.beat, moment: mi, state: 'pending' })));
   // One hand at a time: the app plays the other hand's notes itself.
   const twoHands = new Set(items.map((it) => it.hand)).size > 1;
-  const lastBeat = Math.max(...items.map((it) => it.beat + it.beats));
+  let lastBeat = totalBeats;
   const prefs = {
     mode: store.setting('playMode') || 'wait',
     speed: store.setting('playSpeed') || 0.75,
@@ -47,6 +50,13 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       <div class="top-actions"></div>
       <button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>
     </header>
+    <div class="loop-controls" role="group" aria-label="Passage loop">
+      <label>From bar <select data-loop-from aria-label="First bar">${bars.map((_,i) => `<option value="${i+1}">${i+1}</option>`).join('')}</select></label>
+      <label>to <select data-loop-to aria-label="Last bar">${bars.map((_,i) => `<option value="${i+1}" ${i === bars.length-1 ? 'selected' : ''}>${i+1}</option>`).join('')}</select></label>
+      <button class="pill" data-loop aria-pressed="false">Loop off</button>
+      <button class="pill" data-pause>Pause</button>
+      <small>Written bars; pickup counts as bar 1. Loops replace repeat signs; held notes restart at the boundary.</small>
+    </div>
     <section class="fall-wrap">
       <canvas class="fall"></canvas>
       <div class="fall-hud"><span class="count"></span><span class="score"></span></div>
@@ -69,7 +79,16 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   let beat, running, finished, wrong, lastFrame, raf, nextMoment;
   const bps = () => ((step.tempo || 80) * prefs.speed) / 60;
 
-  function reset() {
+  function reset(nextPass = false) {
+    accompaniment.forEach(h => h.stop()); accompaniment = [];
+    if (!nextPass) pass = 1;
+    const practice = looping ? buildBarLoop(step, +el.querySelector('[data-loop-from]').value, +el.querySelector('[data-loop-to]').value) : buildPractice(step);
+    moments = practice.moments; lyrics = practice.lyrics; lastBeat = practice.totalBeats;
+    items = moments.flatMap((m, mi) => m.items.map(it => ({...it, beat:m.beat, moment:mi, state:'pending'})));
+    const lyric = el.querySelector('.lyric-line');
+    if (lyric) { lyric.hidden = looping; lyric.innerHTML = ''; }
+    lyricKey = ''; targetKey = '';
+    el.querySelector('[data-pause]').textContent = 'Pause';
     items.forEach((it) => { it.state = 'pending'; it.auto = prefs.hand !== 'both' && it.hand !== prefs.hand; });
     beat = -COUNT_IN;
     nextMoment = 0;
@@ -93,7 +112,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   // ---- input
   function input(midi, source) {
     if (listener.calibrating && source === 'mic') return;
-    if (!running || finished || beat < -0.5) { kb.flash(midi, 'press'); return; }
+    if (!running || finished || beat < 0) { kb.flash(midi, 'press'); return; }
     const anyOctave = store.setting('anyOctave');
     const now = beat - (source === 'mic' ? MIC_LATENCY * bps() : 0);
     if (source === 'mic') {
@@ -132,7 +151,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   // Both modes use the same simultaneous-note check. Flow only considers
   // the closest eligible moment and never uses the rolled-note history.
   const chordTimer = setInterval(() => {
-    if (!running || finished || !listener.active || beat < -0.5) return;
+    if (!running || finished || !listener.active || beat < 0) return;
     const now = beat - MIC_LATENCY * bps();
     const candidates = prefs.mode === 'wait' ? [nextMoment] : moments
       .map((m, i) => ({ i, distance: Math.abs(m.beat - now) }))
@@ -166,11 +185,13 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       items.forEach((it) => {
         if (it.auto && it.state === 'pending' && beat >= it.beat) {
           it.state = 'played';
-          piano.play(it.midi, { duration: Math.max(0.25, (it.beats / bps()) * 0.95), velocity: 0.55 });
+          accompaniment.push(piano.play(it.midi, { duration: Math.max(0.25, (it.beats / bps()) * 0.95), velocity: 0.55 }));
           kb.flash(it.midi, 'press');
         }
       });
-      if (beat > lastBeat + 0.5 || (prefs.mode === 'wait' && nextMoment >= moments.length && beat >= moments[moments.length - 1].beat)) finish();
+      if (beat >= lastBeat + 0.5) {
+        if (looping) { pass++; reset(true); } else finish();
+      }
     }
     updateTargets();
     updateLyric();
@@ -306,12 +327,28 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     else hudCount.textContent = '';
     const hits = items.filter((it) => it.state === 'hit').length;
     const total = mine().length;
-    hudScore.textContent = prefs.mode === 'flow' ? `${hits} / ${total}` : `${hits} of ${total}`;
+    hudScore.textContent = (looping ? `Pass ${pass} · ` : '') + (prefs.mode === 'flow' ? `${hits} / ${total}` : `${hits} of ${total}`);
   }
 
   // ---- controls
   el.querySelector('[data-exit]').addEventListener('click', onExit);
-  el.querySelector('[data-restart]').addEventListener('click', reset);
+  el.querySelector('[data-restart]').addEventListener('click', () => reset());
+  el.querySelector('[data-loop]').addEventListener('click', e => {
+    looping = !looping;
+    e.currentTarget.textContent = looping ? 'Loop on' : 'Loop off';
+    e.currentTarget.setAttribute('aria-pressed', String(looping)); reset();
+  });
+  for (const edge of ['from','to']) el.querySelector(`[data-loop-${edge}]`).addEventListener('change', () => {
+    const from = el.querySelector('[data-loop-from]'), to = el.querySelector('[data-loop-to]');
+    if (+from.value > +to.value) { if (edge === 'from') to.value = from.value; else from.value = to.value; }
+    if (looping) reset();
+  });
+  el.querySelector('[data-pause]').addEventListener('click', e => {
+    if (finished) return;
+    running = !running; lastFrame = performance.now(); listener.clearRecent();
+    accompaniment.forEach(h => h.stop()); accompaniment = [];
+    e.currentTarget.textContent = running ? 'Pause' : 'Resume';
+  });
   el.querySelectorAll('[data-mode] button').forEach((b) => b.addEventListener('click', () => {
     prefs.mode = b.dataset.v; store.setting('playMode', prefs.mode); reset();
   }));
@@ -329,6 +366,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   raf = requestAnimationFrame(tick);
 
   return () => {
+    accompaniment.forEach(h => h.stop());
     cancelAnimationFrame(raf);
     clearInterval(chordTimer);
     listener.onNote.delete(onNote);
