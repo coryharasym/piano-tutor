@@ -451,3 +451,13 @@ li { margin-bottom: .25em; }
 .row-btns { display: inline-flex; gap: 6px; flex-shrink: 0; }
 /* Play along: which hand you play */
 .playalong .pill.hand { white-space: nowrap; padding: 0 12px; min-height: 34px; font-size: .82rem; }
+
+.loop-controls { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; padding:4px 12px; background:var(--panel); }
+.loop-controls label { white-space:nowrap; font-size:.85rem; }
+.loop-controls select { min-height:32px; font:inherit; border:1px solid var(--line); border-radius:6px; background:var(--panel); color:var(--ink); }
+.loop-controls small { font-size:.7rem; color:var(--ink-soft); }
+.loop-controls [aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); }
+.playalong { grid-template-rows:auto auto minmax(0,1fr) auto; }
+.playalong:has(.lyric-line) { grid-template-rows:auto auto minmax(0,1fr) auto auto; }
+@media(max-height:450px) { .loop-controls small { display:none; } .playalong .kb-wrap { height:clamp(72px,26dvh,120px); } }
+.playalong:has(.lyric-line[hidden]) { grid-template-rows:auto auto minmax(0,1fr) auto; }
