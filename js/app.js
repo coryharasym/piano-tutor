@@ -65,11 +65,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------------------------------------------------------------- mic control (shared)
-function micButton() {
-  const btn = h(`<button class="icon-btn mic-btn" aria-label="Listening">${icons.micOff}<span class="meter"><i></i></span></button>`);
+function micButton({ labelled = false } = {}) {
+  const btn = h(`<button class="${labelled ? 'pill' : 'icon-btn'} mic-btn" aria-label="Turn microphone on" aria-pressed="false">${icons.micOff}${labelled ? '<span class="mic-label"></span>' : ''}<span class="meter"><i></i></span></button>`);
   const meter = btn.querySelector('.meter i');
   const paint = () => {
     btn.classList.toggle('on', listener.active);
+    btn.setAttribute('aria-pressed', String(listener.active));
+    btn.setAttribute('aria-label', listener.active ? 'Turn microphone off' : 'Turn microphone on');
+    const label = btn.querySelector('.mic-label');
+    if (label) label.textContent = listener.active ? 'Mic on' : 'Mic off';
     btn.querySelector('svg').outerHTML = listener.active ? icons.mic : icons.micOff;
   };
   const onLevel = (lvl) => { meter.style.transform = `scaleY(${Math.min(1, lvl * 18)})`; };
@@ -77,6 +81,7 @@ function micButton() {
   disposers.push(() => listener.onLevel.delete(onLevel));
   btn.addEventListener('click', async () => {
     if (listener.active) { listener.stop(); paint(); toast('Listening off. Tap keys on screen instead.'); return; }
+    btn.disabled = true;
     try {
       await listener.start();
       paint();
@@ -84,6 +89,9 @@ function micButton() {
     } catch (e) {
       console.warn(e);
       toast("Couldn't use the microphone. Check your browser's permission settings.");
+    } finally {
+      btn.disabled = false;
+      paint();
     }
   });
   paint();
@@ -181,6 +189,7 @@ function showHome() {
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
   el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
+  $('.head-actions', el).insertBefore(micButton({ labelled: true }), $('[data-settings]', el));
   app.replaceChildren(el);
   // Bring the next lesson into view in its row.
   requestAnimationFrame(() => {

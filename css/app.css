@@ -79,7 +79,7 @@ li { margin-bottom: .25em; }
 .home-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .home-head h1 { font-size: 1.6rem; font-weight: 750; }
 .home-head p { margin: 0; }
-.head-actions { display: flex; gap: 6px; align-items: center; }
+.head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .continue-card {
   position: relative; display: grid; gap: 2px; width: 100%; text-align: left; padding: 18px 76px 18px 20px; margin-bottom: 22px;
   border: 0; border-radius: var(--radius); background: linear-gradient(135deg, #0e8f7e, #137a8f); color: #fff; box-shadow: var(--shadow);
