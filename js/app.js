@@ -11,6 +11,7 @@ import { store } from './store.js';
 import { icons } from './icons.js';
 import { mountPlayAlong, SPEEDS } from './playalong.js';
 import { mountPrint, printOne, songbook } from './print.js';
+import { mountSheet } from './sheet.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -214,7 +215,7 @@ function showSettings() {
     <button class="text-btn danger" data-reset>Reset all progress</button>
     <p class="muted small">Progress is saved on this device. Piano sound: Salamander Grand Piano by Alexander Holm (CC BY 3.0).</p>
   </div></div>`);
-  const close = () => dlg.remove();
+  const close = mountSheet(dlg);
   dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
   $('[data-close]', dlg).addEventListener('click', close);
   $('[data-vol]', dlg).addEventListener('input', (e) => { store.setting('volume', +e.target.value); piano.setVolume(+e.target.value); });
@@ -250,7 +251,6 @@ function showSettings() {
   $('[data-reset]', dlg).addEventListener('click', () => {
     if (confirm('Clear all lesson progress on this device?')) { store.reset(); close(); route(); }
   });
-  document.body.appendChild(dlg);
 }
 
 function tuningText(t = listener.tuning) {
@@ -292,14 +292,13 @@ async function showTuner() {
       : `<b>All set.</b> Your Middle C read ${Math.abs(cents)} cents ${cents < 0 ? 'low' : 'high'} (100 cents is one note). The app now adjusts for it, so play a C to check it shows as C.`;
     piano.chime();
   };
-  const close = () => { listener.onRaw.delete(onRaw); dlg.remove(); };
+  const close = mountSheet(dlg, () => listener.onRaw.delete(onRaw));
   $('[data-close]', dlg).addEventListener('click', close);
   $('[data-done]', dlg).addEventListener('click', close);
   $('[data-zero]', dlg).addEventListener('click', () => {
     listener.tuning = 0; store.setting('tuning', 0);
     msg.innerHTML = 'Back to standard tuning.';
   });
-  document.body.appendChild(dlg);
   disposers.push(close);
   try {
     await listener.start();
