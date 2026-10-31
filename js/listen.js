@@ -75,9 +75,14 @@ export class Listener {
 
   tick() {
     const a = this.analyser;
-    a.getFloatTimeDomainData(this.time);
-    const level = rms(this.time);
     const now = performance.now();
+    // A longer window steadies low-note calibration. Run it at ~20 Hz so
+    // the extra work does not overload a phone while learning each key.
+    if (this.calibrating && now - (this.lastCalibrationTick || 0) < 45) return;
+    if (this.calibrating) this.lastCalibrationTick = now;
+    const time = this.calibrating ? (this.calibrationTime ||= new Float32Array(4096)) : this.time;
+    a.getFloatTimeDomainData(time);
+    const level = rms(time);
     this.history.push({ t: now, level });
     while (this.history.length && now - this.history[0].t > 3000) this.history.shift();
     const gate = Math.max(0.003, this.tracker.noiseFloor * 3.5);
@@ -87,7 +92,7 @@ export class Listener {
       this.tracker.push({ level: 0, pitch: null });
       return;
     }
-    const raw = level > 0.003 ? detectPitch(this.time, a.context.sampleRate, { maxFreq: 2400 }) : null;
+    const raw = level > 0.003 ? detectPitch(time, a.context.sampleRate, { maxFreq: 2400 }) : null;
     if (raw && raw.clarity > 0.9) this.onRaw.forEach((fn) => fn(69 + 12 * Math.log2(raw.freq / 440), level));
     const pitch = raw && { ...raw, freq: raw.freq * 2 ** (-this.tuning / 12) };
     if (this.onSpectrum.size) {

@@ -9,7 +9,6 @@ import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
-import { showCalibration } from './calibration.js';
 
 const LOOKAHEAD = 4;        // beats visible above the keyboard
 const WINDOW = 0.38;        // seconds either side of a note that still count as "on time"
@@ -46,7 +45,6 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       </div>
       ${twoHands ? '<button class="pill hand" data-hand aria-label="Which hand you play"></button>' : ''}
       <div class="top-actions"></div>
-      ${moments.some(m => m.items.length > 1) ? '<button class="pill" data-calibrate>Calibrate</button>' : ''}
       <button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>
     </header>
     <section class="fall-wrap">
@@ -130,11 +128,6 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   }
   const onNote = (m) => input(m, 'mic');
   listener.onNote.add(onNote);
-  el.querySelector('[data-calibrate]')?.addEventListener('click', () => {
-    running = false;
-    const notes = [...new Set(mine().map(it => it.midi))];
-    showCalibration(notes, () => reset());
-  });
 
   // Both modes use the same simultaneous-note check. Flow only considers
   // the closest eligible moment and never uses the rolled-note history.
