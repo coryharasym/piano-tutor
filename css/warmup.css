@@ -1,0 +1,7 @@
+/* Home-only layout: warm-up and daily practice remain adjacent on small screens. */
+.practice-cards { flex:1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.practice-cards > button { min-width:0; width:100%; }
+.warmup-card { text-align:left; display:flex; flex-direction:column; gap:2px; padding:14px 16px; border-radius:var(--radius); border:1px solid var(--line); background:var(--panel); color:var(--ink); box-shadow:var(--shadow); font:inherit; }
+.warmup-card .title { font-size:1.05rem; font-weight:700; }
+.continue > .continue-card { flex:1.2; }
+.continue > .practice-col { flex:1.4; }
