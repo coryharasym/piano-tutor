@@ -63,7 +63,7 @@ for (const lesson of checks) {
             if (ev.fingers.some((f) => f < 1 || f > 5)) fail(where, `${hand} bad finger ${ev.fingers}`);
           }
           const len = beatsOf(ev.dur);
-          if (!(ev.dur in { w: 1, 'h.': 1, h: 1, 'q.': 1, q: 1, '8.': 1, 8: 1, 16: 1 })) fail(where, `bad duration ${ev.dur}`);
+          if (!(ev.dur in { w: 1, 'h.': 1, h: 1, 'q.': 1, q: 1, '8.': 1, 8: 1, 16: 1, '8t':1 })) fail(where, `bad duration ${ev.dur}`);
           barBeat += len; beat += len;
           if (barBeat > cap + 1e-6) fail(where, `${hand} note ${ev.notes || 'rest'} crosses a bar line at beat ${beat}`);
           if (Math.abs(barBeat - cap) < 1e-6) { barBeat = 0; cap = perBar; }

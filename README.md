@@ -4,7 +4,7 @@ A mobile-friendly web app that teaches classical piano from the very beginning. 
 
 ## What's inside
 
-- **45 lessons in 6 units:** Foundations, First steps, Reading music, Moving around, Harmony, and Classical repertoire (Beethoven, Bach/Petzold, Mozart, Dvořák, Pachelbel).
+- **Beginner and Intermediate courses:** seven beginner chapters and eight intermediate chapters, with 64 new intermediate lessons focused on hymn playing.
 - **Read, look, play:** each lesson mixes short explanations, illustrations, quizzes and practice.
 - **Listens to you play:** pitch detection on the phone's microphone, tuned for piano. Repeated notes and chords work too. You can always tap the on-screen keys instead.
 - **Real piano sound:** sampled grand piano for every key, demo playback ("Listen") and a count-in for rhythm.
@@ -37,7 +37,7 @@ GitHub Pages serves the site straight from the `main` branch. The Tests workflow
 
 ## Writing lessons
 
-Lessons live in `js/lessons/unit*.js`. Notes use a compact format: `note/duration/finger`, for example `C4/q/1 D4/q/2 E4/h/3`. Chords go in brackets: `[C4 E4 G4]/h/1-3-5`. Rests are `r/q`. Durations: `w h h. q q. 8 8. 16`.
+Lessons live in `js/lessons/unit*.js`. Notes use a compact format: `note/duration/finger`, for example `C4/q/1 D4/q/2 E4/h/3`. Chords go in brackets: `[C4 E4 G4]/h/1-3-5`. Rests are `r/q`. Durations: `w h h. q q. 8 8. 16 8t`.
 
 ## Credits
 
@@ -70,3 +70,30 @@ The normal test suite checks PDF signatures, chapter coverage and a source
 fingerprint so curriculum changes cannot silently leave the downloads out of date.
 PDF generation uses local assets and a temporary local server; the app needs no
 runtime PDF service or additional browser dependency.
+
+## Intermediate course
+
+Use the Beginner / Intermediate buttons at the top of the home page. The
+intermediate course has eight chapters and 64 new lessons: five skill lessons,
+two guided hymn studies and a recital in each chapter. It starts with a
+transition from the beginner course and ends with a two-hymn programme.
+
+Existing lesson IDs and beginner progress are unchanged. Both courses use the
+same local progress object and backup file, with separate resume locations,
+course-filtered progress totals, songbooks, hymn shelves and daily practice.
+The selected course is remembered. Intermediate progress IDs start with `int-`.
+A lesson completion records practice; it is not a certified grade.
+
+Intermediate notation adds eighth-note triplets (`8t`, three in one quarter),
+B-flat key-signature support, and count-ins in the large beats of compound
+metres. Existing Wait/Flow, one-hand practice, microphone setup, speed, bar
+loops, printing and progress backup remain shared. Source-score links appear
+on the new-source study screens. See `sources/intermediate/README.md` for
+rights, source editions and teaching adaptations.
+
+Chapter notes have eight new chapter PDFs and a complete intermediate PDF.
+`npm run build:notes` rebuilds both courses' PDFs and their source fingerprint.
+For browser checks, install Playwright and Chromium and run `npm run test:browser`;
+set `CHROMIUM_EXECUTABLE_PATH` when using a system Chromium. It starts its own
+local server and checks the courses at a phone-landscape viewport. `npm test`
+includes course isolation, source integrity, triplet timing and backup checks.

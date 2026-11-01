@@ -3,10 +3,10 @@
 import { beatsOf } from './theory.js';
 
 const KEY_SIG_ACCIDENTALS = {
-  C: {}, G: { F: '#' }, D: { F: '#', C: '#' }, F: { B: 'b' }, Am: {}, Em: { F: '#' }, Dm: { B: 'b' },
+  C: {}, G: { F: '#' }, D: { F: '#', C: '#' }, F: { B: 'b' }, Bb: { B: 'b', E: 'b' }, Eb: { B:'b', E:'b', A:'b' }, Am: {}, Em: { F: '#' }, Dm: { B: 'b' },
 };
 
-const VF_DUR = { w: 'w', 'h.': 'h', h: 'h', 'q.': 'q', q: 'q', '8.': '8', 8: '8', 16: '16' };
+const VF_DUR = { w: 'w', 'h.': 'h', h: 'h', 'q.': 'q', q: 'q', '8.': '8', 8: '8', 16: '16', '8t':'8' };
 
 function vfKey(name) {
   const m = /^([A-G])([#b]?)(-?\d)$/.exec(name);
@@ -111,6 +111,7 @@ export function renderStaff(el, opts) {
     }
     if (grand) new VF.StaveConnector(staveObjs[0], staveObjs[1]).setType('singleRight').setContext(ctx).draw();
 
+    const tuplets=[];
     const voices = staves.map((s, si) => {
       const bar = measures[si][b] || [];
       const notes = bar.map((ev) => {
@@ -154,6 +155,10 @@ export function renderStaff(el, opts) {
         else if (isDone) n.setStyle({ fillStyle: '#9aa7a5', strokeStyle: '#9aa7a5' });
         return n;
       });
+      for(let i=0;i<bar.length;i++) if(bar[i].triplet) {
+        if(!bar[i+1]?.triplet||!bar[i+2]?.triplet) throw Error('Triplet needs three consecutive eighths');
+        tuplets.push(new VF.Tuplet(notes.slice(i,i+3),{num_notes:3,notes_occupied:2})); i+=2;
+      }
       const voice = new VF.Voice({ num_beats: num, beat_value: den }).setMode(VF.Voice.Mode.SOFT);
       voice.addTickables(notes.length ? notes : [new VF.GhostNote({ duration: 'w' })]);
       return voice;
@@ -169,6 +174,7 @@ export function renderStaff(el, opts) {
       v.draw(ctx, staveObjs[i]);
       beams.forEach((bm) => bm.setContext(ctx).draw());
     });
+    tuplets.forEach(t=>t.setContext(ctx).draw());
     x += w;
   }
 

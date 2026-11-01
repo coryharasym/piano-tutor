@@ -1,3 +1,5 @@
+import { INTERMEDIATE_UNITS, INTERMEDIATE_HYMNS } from './intermediate.js';
+export { INTERMEDIATE_UNITS } from './intermediate.js';
 import u1 from './unit1.js';
 import u2 from './unit2.js';
 import u3 from './unit3.js';
@@ -16,14 +18,17 @@ export { chooseRecital } from './recitals.js';
 // The Doxology lessons and practice songs slot in after the lesson each one builds on.
 const EXTRAS = [...DOXOLOGY_LESSONS, ...PRACTICE_SONGS];
 const withExtras = (u) => u.lessons.flatMap((l) => [l, ...EXTRAS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
-export const UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, number: i + 1, lessons: [...withExtras(u), RECITALS[u.id]] }));
+export const BEGINNER_UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, course: 'beginner', number: i + 1, lessons: [...withExtras(u), RECITALS[u.id]] }));
+export const UNITS = [...BEGINNER_UNITS, ...INTERMEDIATE_UNITS];
+export const courseUnits = (course = 'beginner') => course === 'intermediate' ? INTERMEDIATE_UNITS : BEGINNER_UNITS;
 const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson })));
 
 // Every hymn and recital piece, playable any time from the Hymns shelf.
 export const HYMN_SHELF = { id: 'hymns', title: 'Hymns' };
 // In course order, each labelled with its unit's number.
-export const HYMNS = PIECES.map((p) => ({ ...p, unitNumber: UNITS.find((u) => u.id === p.unit).number }))
+const BEGINNER_HYMNS = PIECES.map((p) => ({ ...p, unitNumber: UNITS.find((u) => u.id === p.unit).number }))
   .sort((a, b) => a.unitNumber - b.unitNumber);
+export const HYMNS = [...BEGINNER_HYMNS.map(p=>({...p,course:'beginner'})),...INTERMEDIATE_HYMNS];
 const SHELF = HYMNS.map((lesson) => ({ unit: HYMN_SHELF, lesson }));
 
 // Lessons made on the fly (daily practice, drills) are added here.
@@ -33,8 +38,10 @@ export const addLesson = (unit, lesson) => EXTRA.set(lesson.id, { unit, lesson }
 export const findLesson = (id) => ALL.find((x) => x.lesson.id === id) || SHELF.find((x) => x.lesson.id === id) || EXTRA.get(id) || null;
 
 // The first unfinished lesson (after `afterId`, if given).
-export function nextLesson(done, afterId) {
-  const start = afterId ? ALL.findIndex((x) => x.lesson.id === afterId) + 1 : 0;
-  const rest = ALL.slice(start).find((x) => !done[x.lesson.id]);
-  return (rest || (afterId ? ALL[start] : null))?.lesson || null;
+export function nextLesson(done, afterId, course = 'beginner') {
+  if(afterId) course = findLesson(afterId)?.unit.course || findLesson(afterId)?.lesson.course || course;
+  const items = ALL.filter(x=>x.unit.course===course);
+  const start = afterId ? items.findIndex((x) => x.lesson.id === afterId) + 1 : 0;
+  const rest = items.slice(start).find((x) => !done[x.lesson.id]);
+  return (rest || (afterId ? items[start] : null))?.lesson || null;
 }

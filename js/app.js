@@ -1,11 +1,11 @@
-import { UNITS, HYMNS, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
+import { UNITS, HYMNS, courseUnits, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
 import { PRACTICE_SHELF, buildDaily, buildDrill, dailyReady, today } from './daily.js';
 import { mountMetronome } from './metronome.js';
 import { piano } from './audio.js';
 import { listener } from './listen.js';
 import { Keyboard } from './keyboard.js';
 import { renderStaff } from './staff.js';
-import { buildPractice, matches, lyricLine, lyricHTML } from './practice.js';
+import { buildPractice, meterPulse, matches, lyricLine, lyricHTML } from './practice.js';
 import { parseSeq, toMidi, midiToName, prettyName } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
@@ -30,15 +30,15 @@ function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
   // Daily practice is built for today; the drill gets fresh notes on each visit.
-  if (id === 'daily' && dailyReady(store.data.done)) addLesson(PRACTICE_SHELF, buildDaily(store.data.done));
-  if (id === 'drill' && (view !== 'lesson' || !findLesson('drill') || Number(step) === 0)) addLesson(PRACTICE_SHELF, buildDrill(store.data.done));
+  if (id === 'daily' && dailyReady(store.data.done, store.setting('course'))) addLesson(PRACTICE_SHELF, buildDaily(store.data.done, today(), store.setting('course')));
+  if (id === 'drill' && (view !== 'lesson' || !findLesson('drill') || Number(step) === 0)) addLesson(PRACTICE_SHELF, buildDrill(store.data.done, store.setting('course')));
   if (view === 'lesson' && findLesson(id)) return showLesson(id, Number(step) || 0);
   if (view === 'metronome') return showMetronome();
   if (view === 'free') return showFreePlay();
   if (view === 'play' && findLesson(id)) return showPlayAlong(id, Number(step) || 0);
   if (view === 'print' && printOne(id, Number(step) || 0)) return showPrint(id, Number(step) || 0);
   if (view === 'songbook') return showSongbook();
-  if (view === 'notes' && (!id || id === 'all' || UNITS.some(u => u.id === id))) {
+  if (view === 'notes' && (!id || ['all','intermediate','library'].includes(id) || UNITS.some(u => u.id === id))) {
     keepAwake(false);
     return mountNotes(app, { id: id || 'all', onBack: () => go('#/') });
   }
@@ -115,16 +115,19 @@ function toast(msg) {
 // ---------------------------------------------------------------- home
 function showHome() {
   keepAwake(false);
-  const last = store.data.last && findLesson(store.data.last.lesson) ? store.data.last : null;
-  const upNext = nextLesson(store.data.done);
-  const total = UNITS.reduce((n, u) => n + u.lessons.length, 0);
-  const doneCount = Object.keys(store.data.done).filter((id) => findLesson(id)).length;
+  const course=store.setting('course')==='intermediate'?'intermediate':'beginner';
+  const selectedUnits=courseUnits(course);
+  const savedLast=store.data.lastByCourse?.[course] || store.data.last;
+  const last = savedLast && (findLesson(savedLast.lesson)?.unit.course||findLesson(savedLast.lesson)?.lesson.course)===course ? savedLast : null;
+  const upNext = nextLesson(store.data.done, null, course);
+  const total = selectedUnits.reduce((n, u) => n + u.lessons.length, 0);
+  const doneCount = selectedUnits.flatMap(u=>u.lessons).filter(l=>store.isDone(l.id)).length;
 
   const el = h(`<main class="home">
     <header class="home-head">
       <div>
         <h1>Piano Tutor</h1>
-        <p class="muted">${doneCount ? `${doneCount} of ${total} lessons complete` : 'Classical piano, one small step at a time'}</p>
+        <p class="muted">${doneCount ? `${doneCount} of ${total} lessons complete` : course==='intermediate'?'Intermediate hymn piano, one small step at a time':'Classical piano, one small step at a time'}</p>
       </div>
       <div class="head-actions">
         <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
@@ -133,12 +136,17 @@ function showHome() {
         <button class="icon-btn" data-settings aria-label="Settings">${icons.gear}</button>
       </div>
     </header>
+    <nav class="course-switch" aria-label="Course level">
+      <button class="pill" data-course="beginner" aria-pressed="${course==='beginner'}">Beginner</button>
+      <button class="pill" data-course="intermediate" aria-pressed="${course==='intermediate'}">Intermediate</button>
+      <p class="muted">${course==='intermediate'?'Eight chapters for confident, expressive hymn playing. Start with the transition chapter.':'Your foundations: seven chapters from the first note to complete pieces.'}</p>
+    </nav>
     <section class="continue"></section>
     <section class="units"></section>
   </main>`);
 
   const cont = $('.continue', el);
-  const target = upNext || UNITS[0].lessons[0];
+  const target = upNext || selectedUnits[0].lessons[0];
   const resume = last && !store.isDone(last.lesson) ? last : null;
   const contLesson = resume ? findLesson(resume.lesson).lesson : target;
   cont.appendChild(h(`<button class="continue-card">
@@ -150,17 +158,18 @@ function showHome() {
   cont.firstChild.addEventListener('click', () => go(`#/lesson/${contLesson.id}/${resume ? resume.step : 0}`));
 
   // Daily practice, and tools for practising on your own.
-  const ready = dailyReady(store.data.done);
-  const doneToday = store.data.practice?.[today()];
+  const ready = dailyReady(store.data.done, store.setting('course'));
+  const practiceDay=course==='intermediate'?'intermediate:'+today():today();
+  const doneToday = store.data.practice?.[practiceDay];
   const daily = h(`<div class="practice-col">
     <button class="daily-card ${doneToday ? 'done' : ''}" ${ready ? '' : 'disabled'}>
       <span class="eyebrow">${doneToday ? `${icons.check} Done today` : 'Daily practice'}</span>
       <span class="title">Today's practice</span>
-      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : 'Unlocks after "Right hand C position"'}</span>
+      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : course==='intermediate'?'Unlocks after A calm starting point':'Unlocks after "Right hand C position"'}</span>
     </button>
     <div class="tool-row">
       <button class="pill" data-metronome>${icons.metronome}<span>Metronome</span></button>
-      <button class="pill" data-drill ${store.isDone('treble-reading') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
+      <button class="pill" data-drill ${(store.isDone('treble-reading') || course==='intermediate') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
     </div>
   </div>`);
   cont.appendChild(daily);
@@ -169,7 +178,7 @@ function showHome() {
   $('[data-drill]', daily).addEventListener('click', () => go('#/lesson/drill/0'));
 
   const units = $('.units', el);
-  UNITS.forEach((u, ui) => {
+  selectedUnits.forEach((u, ui) => {
     const done = u.lessons.filter((l) => store.isDone(l.id)).length;
     const ribbon = u.lessons.some((l) => l.recital && store.isDone(l.id));
     const sec = h(`<div class="unit">
@@ -191,14 +200,15 @@ function showHome() {
     <div class="unit-head"><span class="unit-num">${icons.note}</span><div><h2>Hymns</h2><p class="muted">Every recital piece, ready to practice any time, marked with the unit it belongs to.</p></div>
     <button class="text-btn" data-songbook>${icons.print} Print the songbook</button></div>
     <div class="lesson-row"></div></div>`);
-  HYMNS.forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
+  HYMNS.filter(l=>l.course===course).forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
   units.appendChild(hymns);
 
-  $('[data-notes]', el).addEventListener('click', () => go('#/notes/all'));
+  $('[data-notes]', el).addEventListener('click', () => go(course==='intermediate'?'#/notes/intermediate':'#/notes/all'));
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
   el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
   $('.head-actions', el).insertBefore(micButton({ labelled: true }), $('[data-settings]', el));
+  el.querySelectorAll('[data-course]').forEach(b=>b.addEventListener('click',()=>{store.setting('course',b.dataset.course);route();}));
   app.replaceChildren(el);
   // Bring the next lesson into view in its row.
   requestAnimationFrame(() => {
@@ -381,7 +391,7 @@ function showPrint(id, stepIndex) {
 
 function showSongbook() {
   keepAwake(false);
-  disposers.push(mountPrint(app, { songs: songbook(), heading: 'The Piano Tutor songbook', onBack: () => go('#/') }));
+  disposers.push(mountPrint(app, { songs: songbook(store.setting('course')), heading: 'The Piano Tutor songbook', onBack: () => go('#/') }));
 }
 
 // ---------------------------------------------------------------- lesson
@@ -420,19 +430,19 @@ function showLesson(id, stepIndex) {
       return;
     }
     if (lesson.daily) {
-      if (id === 'daily') store.practised(today());
+      if (id === 'daily') store.practised(store.setting('course')==='intermediate'?'intermediate:'+today():today());
       return celebrate(lesson, null, id === 'drill' ? () => go('#/lesson/drill/0') : step.t === 'play' ? () => route() : null);
     }
     store.markDone(id);
     // From the Hymns shelf, the next hymn; otherwise the next lesson in the course.
     const nxt = lesson.hymn
-      ? HYMNS.slice(HYMNS.indexOf(lesson) + 1).find((l) => !store.isDone(l.id)) || null
+      ? HYMNS.slice(HYMNS.indexOf(lesson) + 1).find((l) => l.course===lesson.course && !store.isDone(l.id)) || null
       : nextLesson(store.data.done, id);
     celebrate(lesson, nxt, step.t === 'play' ? () => route() : null);
   };
   $('[data-home]', el).addEventListener('click', () => go('#/'));
   $('[data-prev]', el).addEventListener('click', () => goStep(stepIndex - 1));
-  $('[data-next]', el).addEventListener('click', () => (isLast ? finish() : goStep(stepIndex + 1)));
+  $('[data-next]', el).addEventListener('click', () => { if(lesson.recital && step.final && !stepDone) {toast('Play this performance through before continuing.');return;} isLast ? finish() : goStep(stepIndex+1); });
 
   const ctx = {
     el, stage: $('.stage', el),
@@ -442,7 +452,7 @@ function showLesson(id, stepIndex) {
       const btn = $('[data-next]', el);
       btn.classList.add('ready');
     },
-    next: () => (isLast ? finish() : goStep(stepIndex + 1)),
+    next: () => { if(lesson.recital && step.final && !stepDone) {toast('Play this performance through before continuing.');return;} isLast ? finish() : goStep(stepIndex+1); },
   };
   app.replaceChildren(el);
   if (step.t === 'read') renderRead(step, ctx);
@@ -453,7 +463,7 @@ function showLesson(id, stepIndex) {
 
 // "3 days in a row", counting back from today (or yesterday, if not yet today).
 function streakText() {
-  const days = store.data.practice || {};
+  const days = Object.fromEntries(Object.entries(store.data.practice || {}).filter(([k])=>store.setting('course')==='intermediate'?k.startsWith('intermediate:'):!k.includes(':')).map(([k,v])=>[k.replace('intermediate:',''),v]));
   const d = new Date();
   if (!days[today(d)]) d.setDate(d.getDate() - 1);
   let n = 0;
@@ -596,7 +606,7 @@ function renderPlay(step, ctx) {
 
   const el = h(`<div class="play">
     <div class="play-head">
-      <p class="say">${step.say}</p>
+      <p class="say">${step.say}</p>${step.source ? `<p class="score-source"><a href="${step.source}" target="_blank" rel="noopener">Public-domain source score</a></p>` : ''}
       <div class="play-tools">
         <span class="reps"></span>
         ${step.anyNote || step.noDemo ? '' : `<span class="listen-group"><button class="pill" data-demo>${icons.ear}<span>Listen</span></button><button class="pill speed" data-speed aria-label="Listening speed"></button></span>`}
@@ -902,10 +912,9 @@ function expressionTip(notes) {
 function playDemo(practice, bpm, clicks, onMoment, time = '4/4') {
   const ctx = piano.ctx;
   const spb = 60 / bpm;
-  const [num, den] = time.split('/').map(Number);
-  const beatUnit = 4 / den;
-  const start = ctx.currentTime + (clicks ? num * beatUnit * spb : 0) + 0.15;
-  if (clicks) for (let b = 0; b < num; b++) piano.click(ctx.currentTime + 0.15 + b * beatUnit * spb, b === 0);
+  const {count,unit:beatUnit,bar}=meterPulse(time);
+  const start = ctx.currentTime + (clicks ? bar * spb : 0) + 0.15;
+  if (clicks) for (let b = 0; b < count; b++) piano.click(ctx.currentTime + 0.15 + b * beatUnit * spb, b === 0);
   const handles = [];
   const timers = [];
   // Loudness follows the dynamics marks; the pedal holds notes until it lifts.
