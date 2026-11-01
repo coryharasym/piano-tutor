@@ -152,3 +152,11 @@ export function buildBarLoop(step, first, last) {
   return { ...straight, lyrics: null, totalBeats: end - start,
     moments: [...byBeat].sort((a,b) => a[0]-b[0]).map(([beat,items]) => ({beat,items})) };
 }
+
+// Quarter-note units remain the timing engine's common clock. Compound
+// metres count groups of three eighths as one large beat.
+export function meterPulse(time='4/4') {
+  const [num,den]=time.split('/').map(Number);
+  const compound=den===8&&num>=6&&num%3===0;
+  return {bar:num*4/den,unit:compound?1.5:4/den,count:compound?num/3:num};
+}

@@ -4,10 +4,12 @@ const KEY = 'piano-tutor:v1';
 
 const defaults = {
   done: {},          // lessonId -> true
-  last: null,        // { lesson, step }
+  last: null,
+  lastByCourse: {},        // { lesson, step }
   practice: {},      // "2026-10-24" -> true, days with daily practice done
   best: {},          // reading drill -> fastest time in seconds
   settings: {
+    course: 'beginner',
     volume: 0.8,
     anyOctave: true, // accept the right note in a neighbouring octave (mic only)
     keyNames: true,  // show note names on keys where the lesson allows
@@ -35,7 +37,7 @@ export const store = {
   markDone(id) { this.data.done[id] = true; this.save(); },
   isDone(id) { return !!this.data.done[id]; },
   practised(day) { this.data.practice = { ...this.data.practice, [day]: true }; this.save(); },
-  setLast(lesson, step) { this.data.last = { lesson, step }; this.save(); },
+  setLast(lesson, step) { this.data.last = { lesson, step }; const course=lesson.startsWith('int-')?'intermediate':'beginner'; this.data.lastByCourse={...this.data.lastByCourse,[course]:{lesson,step}}; this.data.settings.course=course; this.save(); },
   setting(k, v) {
     if (v === undefined) return this.data.settings[k];
     this.data.settings[k] = v;
@@ -51,7 +53,7 @@ export const store = {
   },
   restore(text) {
     const file = JSON.parse(text);
-    if (file?.app !== 'piano-tutor' || typeof file.data?.done !== 'object') throw new Error('Not a Piano Tutor backup');
+    if (file?.app !== 'piano-tutor' || !file.data?.done || typeof file.data.done !== 'object' || Array.isArray(file.data.done)) throw new Error('Not a Piano Tutor backup');
     const localCalibration = this.data.keyboardCalibration;
     const { keyboardCalibration, ...data } = file.data;
     this.data = { ...structuredClone(defaults), ...data, settings: { ...defaults.settings, ...data.settings } };

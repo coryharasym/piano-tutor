@@ -1,10 +1,10 @@
 // Notes read the same curriculum as the lessons. Rebuild PDFs after curriculum edits.
-import { UNITS } from './lessons/index.js';
+import { UNITS, BEGINNER_UNITS, INTERMEDIATE_UNITS } from './lessons/index.js';
 import { buildPractice } from './practice.js';
 import { renderStaff } from './staff.js';
 
-export const NOTES_VERSION = '2026-10-31';
-export const pdfPath = (id = 'all') => `notes/${id === 'all' ? 'piano-tutor-course-notes' : `piano-tutor-${id}-notes`}.pdf`;
+export const NOTES_VERSION = '2026-11-01';
+export const pdfPath = (id = 'all') => `notes/${id === 'all' ? 'piano-tutor-course-notes' : id === 'intermediate' ? 'piano-tutor-intermediate-course-notes' : `piano-tutor-${id}-notes`}.pdf`;
 export const escapeHTML = (value = '') => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const CHECKS = {
@@ -25,7 +25,7 @@ export function chapterLessons(unit) {
 export function chapterHTML(unit) {
   let figureNumber = 0;
   return `<article class="notes-chapter" data-chapter="${unit.id}">
-    <header class="notes-chapter-head"><p class="eyebrow">Piano Tutor · Chapter ${unit.number}</p><h1>${escapeHTML(unit.title)}</h1><p>${escapeHTML(unit.blurb)}</p></header>
+    <header class="notes-chapter-head"><p class="eyebrow">Piano Tutor · ${unit.course==='intermediate'?'Intermediate':'Beginner'} · Chapter ${unit.number}</p><h1>${escapeHTML(unit.title)}</h1><p>${escapeHTML(unit.blurb)}</p></header>
     <div class="notes-intro"><h2>How to use these notes</h2><p>Read alongside the lessons or keep beside your piano. Review the explanations, try the practice tasks, then use the checklist without on-screen hints. Listening and demonstrations are available in the app. Notation examples show the opening two bars; full songs are in the Songbook.</p></div>
     <nav class="notes-lesson-list" aria-label="Chapter lessons"><h2>In this chapter</h2><ol>${chapterLessons(unit).map(l => `<li>${escapeHTML(l.title)}</li>`).join('')}</ol></nav>
     ${chapterLessons(unit).map((lesson, li) => {
@@ -44,19 +44,20 @@ export function chapterHTML(unit) {
           return '';
         }).join('')}</section>`;
     }).join('')}
-    <section class="notes-checklist"><h2>Can I do this independently?</h2><p>Try these at your piano with hints and note labels turned off. Tick a box when you can do it comfortably; return to the matching lesson when you need a reminder.</p><ul>${CHECKS[unit.id].map(t => `<li><span class="notes-box" aria-hidden="true"></span>${escapeHTML(t)}</li>`).join('')}</ul><h3>My next practice goal</h3><div class="notes-writing"></div><h3>What sounded better? What still needs work?</h3><div class="notes-writing"></div></section>
+    <section class="notes-checklist"><h2>Can I do this independently?</h2><p>Try these at your piano with hints and note labels turned off. Tick a box when you can do it comfortably; return to the matching lesson when you need a reminder.</p><ul>${(unit.checklist || CHECKS[unit.id]).map(t => `<li><span class="notes-box" aria-hidden="true"></span>${escapeHTML(t)}</li>`).join('')}</ul><h3>My next practice goal</h3><div class="notes-writing"></div><h3>What sounded better? What still needs work?</h3><div class="notes-writing"></div></section>
   </article>`;
 }
 
 export function mountNotes(root, { id = 'all', onBack }) {
-  const units = id === 'all' ? UNITS : UNITS.filter(u => u.id === id);
+  const units = id === 'library' ? UNITS : id === 'all' ? BEGINNER_UNITS : id === 'intermediate' ? INTERMEDIATE_UNITS : UNITS.filter(u => u.id === id);
+  const collection=['all','intermediate','library'].includes(id);
   if (!units.length) throw new Error('Unknown chapter');
-  const heading = id === 'all' ? 'Complete course notes' : `${units[0].number}. ${units[0].title}`;
+  const heading = collection ? (id==='intermediate'?'Intermediate course notes':id==='library'?'All course notes':'Beginner course notes') : `${units[0].number}. ${units[0].title}`;
   const el = document.createElement('main');
   el.className = 'notes-view';
   el.innerHTML = `<header class="notes-bar"><button class="icon-btn" data-back aria-label="All lessons">←</button><div><span class="eyebrow">Chapter notes</span><h1>${escapeHTML(heading)}</h1></div><a class="pill accent" href="${pdfPath(id)}" download>Download PDF</a><button class="pill" data-print>Print notes</button></header>
-    <p class="notes-help">PDFs include the explanations, diagrams, practice tasks, and review checklists for ${id === 'all' ? 'all seven chapters' : 'this chapter'}. On iPhone, open the PDF and use Share → Save to Files if needed. Full sheet music is in the Songbook.</p>
-    ${id === 'all' ? `<nav class="notes-index" aria-label="Download chapters"><h2>Individual chapters</h2>${UNITS.map(u => `<a class="pill" href="${pdfPath(u.id)}" download>${u.number}. ${escapeHTML(u.title)} · PDF</a>`).join('')}</nav>` : ''}
+    <p class="notes-help">PDFs include the explanations, diagrams, practice tasks, and review checklists for ${collection ? 'these '+units.length+' chapters' : 'this chapter'}. On iPhone, open the PDF and use Share → Save to Files if needed. Full sheet music is in the Songbook.</p>
+    ${collection ? `<nav class="notes-index" aria-label="Download chapters"><h2>Individual chapters</h2>${units.map(u => `<a class="pill" href="${pdfPath(u.id)}" download>${u.number}. ${escapeHTML(u.title)} · PDF</a>`).join('')}</nav>` : ''}
     <div class="notes-pages">${units.map(chapterHTML).join('')}</div>`;
   root.replaceChildren(el);
   el.querySelector('[data-back]').addEventListener('click', onBack);

@@ -22,7 +22,7 @@ class Keyboard {constructor(){this.keys=new Map();} setTargets(){} flash(){}}
 globalThis.loopTest={...practice,...theory,listener,piano,store,Keyboard,icons:{}};
 let source=readFileSync(new URL('../js/playalong.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;\n/gm,'');
-source='const {Keyboard,buildPractice,loopBars,buildBarLoop,matches,lyricLine,lyricHTML,listener,piano,toMidi,isBlack,store,icons}=globalThis.loopTest;\n'+source;
+source='const {Keyboard,buildPractice,meterPulse,loopBars,buildBarLoop,matches,lyricLine,lyricHTML,listener,piano,toMidi,isBlack,store,icons}=globalThis.loopTest;\n'+source;
 const {mountPlayAlong}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const dispose=mountPlayAlong({replaceChildren(){}},{title:'Two bars',rh:'C4/w D4/w',tempo:120},{micButton:()=>({}),onExit(){}});
 const click=s=>node(s).events.click({currentTarget:node(s)});

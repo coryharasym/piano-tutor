@@ -54,7 +54,7 @@ function warmUp(rand, done) {
 function finishedSteps(done) {
   const steps = [];
   UNITS.forEach((u) => u.lessons.forEach((l) => {
-    if (!done[l.id] || l.recital) return;
+    if (u.course!=='beginner' || !done[l.id] || l.recital) return;
     l.steps.forEach((s) => { if (s.t === 'play' && !s.anyNote && !s.anyOrder) steps.push({ ...s, from: l.title }); });
   }));
   return steps;
@@ -86,9 +86,10 @@ function readingStep(rand, clef, done, extra = {}) {
 }
 
 // Is there enough to build a session yet?
-export const dailyReady = (done) => !!done['rh-c-position'];
+export const dailyReady = (done, course='beginner') => course==='intermediate' ? !!done['int-readiness'] : !!done['rh-c-position'];
 
-export function buildDaily(done, date = today()) {
+export function buildDaily(done, date = today(), course='beginner') {
+  if(course==='intermediate') return buildIntermediateDaily(done,date);
   const rand = seeded(date);
   const steps = [{
     t: 'read', title: 'Today\'s practice',
@@ -127,7 +128,12 @@ export function buildDaily(done, date = today()) {
 }
 
 // A reading drill: new notes every time, timed so you can watch yourself speed up.
-export function buildDrill(done) {
+export function buildDrill(done, course='beginner') {
+  if(course==='intermediate') {
+    const pool=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5','F5','G5'];
+    const notes=Array.from({length:12},()=>pick(Math.random,pool));
+    return {id:'drill',daily:true,title:'Intermediate reading drill',summary:'Read unfamiliar notes across a wider range.',steps:[{t:'play',title:'Read beyond one position',say:'Preview the direction and intervals. Keep the hand free to move. The timer measures note-finding speed, not musical rhythm.',rh:notes.map(n=>n+'/q').join(' '),staff:true,names:false,hint:false,noDemo:true,range:['C4','G5'],keyLabels:'c',timed:'intermediate-treble'}]};
+  }
   const rand = Math.random;
   const steps = [readingStep(rand, 'treble', done, { timed: 'treble', title: 'Treble notes' })];
   if (done['bass-clef']) steps.push(readingStep(rand, 'bass', done, { timed: 'bass', title: 'Bass notes' }));
@@ -136,4 +142,18 @@ export function buildDrill(done) {
     id: 'drill', daily: true, title: 'Note-reading drill',
     summary: 'Ten notes at a time, against the clock.', steps,
   };
+}
+
+function buildIntermediateDaily(done,date) {
+  const rand=seeded('intermediate:'+date);
+  const completed=UNITS.filter(u=>u.course==='intermediate').flatMap(u=>u.lessons).filter(l=>done[l.id]&&!l.recital);
+  const skills=completed.filter(l=>!l.steps.some(s=>s.song));
+  const hymns=completed.filter(l=>l.steps.some(s=>s.song));
+  const steps=[{t:'read',title:'Today’s intermediate practice',body:'<p>Start with relaxed movement. Review one learned skill, read a short unfamiliar phrase, then shape a hymn you know. Choose a manageable loop and finish with a complete phrase.</p>'}];
+  const skill=skills.length?pick(rand,skills):UNITS.find(u=>u.id==='i1').lessons[0];
+  const drill=skill.steps.find(s=>s.t==='play');if(drill)steps.push({...drill,title:'Skill review: '+skill.title});
+  steps.push(readingStep(rand,'treble',{landmarks:true}));
+  if(hymns.length){const hymn=pick(rand,hymns);steps.push({...hymn.steps.filter(s=>s.t==='play'&&s.song).at(-1),title:'Hymn review: '+hymn.title});}
+  steps.push({t:'read',title:'One musical goal',body:'<p>Play the last phrase again without looking at highlighted keys. Name one improvement and choose a small goal for tomorrow. Keep listening for a clear melody, a steady pulse and comfortable movement.</p>'});
+  return {id:'daily',daily:true,title:'Today’s intermediate practice',summary:'A learned skill, fresh reading and a hymn.',steps};
 }

@@ -16,25 +16,27 @@ const TITLES = {
   mozart: 'Eine kleine Nachtmusik',
 };
 
-const KEY_NAMES = { C: 'C major', G: 'G major', D: 'D major', F: 'F major', Am: 'A minor', Em: 'E minor', Dm: 'D minor' };
+const KEY_NAMES = { C: 'C major', G: 'G major', D: 'D major', F: 'F major', Am: 'A minor', Em: 'E minor', Dm: 'D minor', Bb:'B-flat major' };
 
 export function songTitle(lesson, step) {
   if (lesson.recital) return lesson.piece.title;
-  if (lesson.hymn) return lesson.title;
+  if (lesson.hymn) return step.title === 'Your recital' ? lesson.title : step.title;
   return TITLES[lesson.id] || step.title || lesson.title;
 }
 
 // The last song step of each lesson (the full performance, not the rehearsal):
 // the course's songs in order, then every hymn. Recitals are covered by the hymns.
-export function songbook() {
+export function songbook(course) {
   const songs = [];
   const add = (unit, lesson) => {
     let last = -1;
     lesson.steps.forEach((s, i) => { if (s.t === 'play' && s.song) last = i; });
-    if (last >= 0) songs.push({ unit, lesson, stepIndex: last });
+    const finals=lesson.steps.map((s,i)=>s.final&&s.song?i:-1).filter(i=>i>=0);
+    if(lesson.course==='intermediate'&&finals.length>1) finals.forEach(i=>songs.push({unit,lesson,stepIndex:i}));
+    else if (last >= 0) songs.push({ unit, lesson, stepIndex: last });
   };
-  UNITS.forEach((unit) => unit.lessons.forEach((lesson) => { if (!lesson.recital) add(unit, lesson); }));
-  HYMNS.forEach((lesson) => add(HYMN_SHELF, lesson));
+  UNITS.filter(u=>!course || u.course===course).forEach((unit) => unit.lessons.forEach((lesson) => { if (!lesson.recital) add(unit, lesson); }));
+  HYMNS.filter(l=>!course || l.course===course).forEach((lesson) => add(HYMN_SHELF, lesson));
   return songs;
 }
 

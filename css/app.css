@@ -461,3 +461,13 @@ li { margin-bottom: .25em; }
 .playalong:has(.lyric-line) { grid-template-rows:auto auto minmax(0,1fr) auto auto; }
 @media(max-height:450px) { .loop-controls small { display:none; } .playalong .kb-wrap { height:clamp(72px,26dvh,120px); } }
 .playalong:has(.lyric-line[hidden]) { grid-template-rows:auto auto minmax(0,1fr) auto; }
+
+.course-switch { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:18px 0; }
+.course-switch button { min-height:44px; padding:8px 20px; }
+.course-switch [aria-pressed="true"] { background:var(--accent); color:white; border-color:var(--accent); }
+.course-switch p { flex-basis:100%; margin:0; font-size:.9rem; }
+.score-source { font-size:.72rem; margin:0; }
+.score-source a { color:var(--ink-soft); }
+.home-head { flex-wrap:wrap; }
+.home-head > div:first-child { min-width:0; flex:1 1 240px; }
+.home-head .head-actions { flex:1 1 440px; min-width:0; max-width:100%; }

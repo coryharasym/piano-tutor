@@ -3,7 +3,7 @@
 //   Flow mode: the music keeps moving; you get a score for notes played on time.
 
 import { Keyboard } from './keyboard.js';
-import { buildPractice, loopBars, buildBarLoop, matches, lyricLine, lyricHTML } from './practice.js';
+import { buildPractice, meterPulse, loopBars, buildBarLoop, matches, lyricLine, lyricHTML } from './practice.js';
 import { listener } from './listen.js';
 import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
@@ -13,12 +13,12 @@ import { icons } from './icons.js';
 const LOOKAHEAD = 4;        // beats visible above the keyboard
 const WINDOW = 0.38;        // seconds either side of a note that still count as "on time"
 const MIC_LATENCY = 0.12;   // the mic hears a note a little after it's played
-const COUNT_IN = 4;         // beats before the first note
 
 export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'], [1.5, '1½×']];
 
 export function mountPlayAlong(root, step, { micButton, onExit }) {
   let { moments, lyrics, totalBeats } = buildPractice(step);
+  const pulse=meterPulse(step.time||'4/4');
   const bars = loopBars(step).bars;
   let looping = false, pass = 1;
   let accompaniment = [];
@@ -90,7 +90,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     lyricKey = ''; targetKey = '';
     el.querySelector('[data-pause]').textContent = 'Pause';
     items.forEach((it) => { it.state = 'pending'; it.auto = prefs.hand !== 'both' && it.hand !== prefs.hand; });
-    beat = -COUNT_IN;
+    beat = -pulse.bar;
     nextMoment = 0;
     wrong = 0;
     finished = false;
@@ -323,7 +323,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     g.globalAlpha = 1;
 
     // HUD
-    if (beat < 0 && running) hudCount.textContent = String(Math.ceil(-beat));
+    if (beat < 0 && running) hudCount.textContent = String(Math.ceil(-beat/pulse.unit));
     else hudCount.textContent = '';
     const hits = items.filter((it) => it.state === 'hit').length;
     const total = mine().length;

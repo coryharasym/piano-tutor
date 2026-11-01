@@ -38,7 +38,7 @@ export const midiToFreq = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
 export const freqToMidiFloat = (f) => 69 + 12 * Math.log2(f / 440);
 
 // Durations in beats (quarter note = 1)
-export const DUR_BEATS = { w: 4, 'h.': 3, h: 2, 'q.': 1.5, q: 1, '8.': 0.75, 8: 0.5, 16: 0.25 };
+export const DUR_BEATS = { w: 4, 'h.': 3, h: 2, 'q.': 1.5, q: 1, '8.': 0.75, 8: 0.5, 16: 0.25, '8t': 1 / 3 };
 
 /*
  * Parse the compact note format used by the lesson files.
@@ -91,6 +91,7 @@ export function parseSeq(str, defaults = {}) {
     const names = head.split(/\s+/).filter(Boolean);
     const fingers = fingerStr ? fingerStr.split('-').map(Number) : [];
     const ev = {
+      ...(dur==='8t' && {triplet:true}),
       notes: names,
       midis: names.map(toMidi),
       dur,
