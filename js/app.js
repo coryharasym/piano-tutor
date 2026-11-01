@@ -1,3 +1,4 @@
+import { COURSES, validCourse, practiceKey } from './courses.js';
 import { UNITS, HYMNS, courseUnits, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
 import { PRACTICE_SHELF, buildDaily, buildDrill, dailyReady, today } from './daily.js';
 import { mountMetronome } from './metronome.js';
@@ -38,7 +39,7 @@ function route() {
   if (view === 'play' && findLesson(id)) return showPlayAlong(id, Number(step) || 0);
   if (view === 'print' && printOne(id, Number(step) || 0)) return showPrint(id, Number(step) || 0);
   if (view === 'songbook') return showSongbook();
-  if (view === 'notes' && (!id || ['all','intermediate','library'].includes(id) || UNITS.some(u => u.id === id))) {
+  if (view === 'notes' && (!id || ['all','intermediate','advanced','library'].includes(id) || UNITS.some(u => u.id === id))) {
     keepAwake(false);
     return mountNotes(app, { id: id || 'all', onBack: () => go('#/') });
   }
@@ -115,7 +116,8 @@ function toast(msg) {
 // ---------------------------------------------------------------- home
 function showHome() {
   keepAwake(false);
-  const course=store.setting('course')==='intermediate'?'intermediate':'beginner';
+  const course=validCourse(store.setting('course'));
+  const courseInfo=COURSES[course];
   const selectedUnits=courseUnits(course);
   const savedLast=store.data.lastByCourse?.[course] || store.data.last;
   const last = savedLast && (findLesson(savedLast.lesson)?.unit.course||findLesson(savedLast.lesson)?.lesson.course)===course ? savedLast : null;
@@ -127,7 +129,7 @@ function showHome() {
     <header class="home-head">
       <div>
         <h1>Piano Tutor</h1>
-        <p class="muted">${doneCount ? `${doneCount} of ${total} lessons complete` : course==='intermediate'?'Intermediate hymn piano, one small step at a time':'Classical piano, one small step at a time'}</p>
+        <p class="muted">${doneCount ? `${doneCount} of ${total} lessons complete` : courseInfo.subtitle}</p>
       </div>
       <div class="head-actions">
         <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
@@ -137,9 +139,8 @@ function showHome() {
       </div>
     </header>
     <nav class="course-switch" aria-label="Course level">
-      <button class="pill" data-course="beginner" aria-pressed="${course==='beginner'}">Beginner</button>
-      <button class="pill" data-course="intermediate" aria-pressed="${course==='intermediate'}">Intermediate</button>
-      <p class="muted">${course==='intermediate'?'Eight chapters for confident, expressive hymn playing. Start with the transition chapter.':'Your foundations: seven chapters from the first note to complete pieces.'}</p>
+      ${Object.entries(COURSES).map(([id,info])=>`<button class="pill" data-course="${id}" aria-pressed="${course===id}">${info.label}</button>`).join('')}
+      <p class="muted">${courseInfo.description}</p>
     </nav>
     <section class="continue"></section>
     <section class="units"></section>
@@ -159,17 +160,17 @@ function showHome() {
 
   // Daily practice, and tools for practising on your own.
   const ready = dailyReady(store.data.done, store.setting('course'));
-  const practiceDay=course==='intermediate'?'intermediate:'+today():today();
+  const practiceDay=practiceKey(course,today());
   const doneToday = store.data.practice?.[practiceDay];
   const daily = h(`<div class="practice-col">
     <button class="daily-card ${doneToday ? 'done' : ''}" ${ready ? '' : 'disabled'}>
       <span class="eyebrow">${doneToday ? `${icons.check} Done today` : 'Daily practice'}</span>
       <span class="title">Today's practice</span>
-      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : course==='intermediate'?'Unlocks after A calm starting point':'Unlocks after "Right hand C position"'}</span>
+      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : 'Unlocks after '+courseInfo.unlock}</span>
     </button>
     <div class="tool-row">
       <button class="pill" data-metronome>${icons.metronome}<span>Metronome</span></button>
-      <button class="pill" data-drill ${(store.isDone('treble-reading') || course==='intermediate') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
+      <button class="pill" data-drill ${(store.isDone('treble-reading') || course!=='beginner') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
     </div>
   </div>`);
   cont.appendChild(daily);
@@ -203,7 +204,7 @@ function showHome() {
   HYMNS.filter(l=>l.course===course).forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
   units.appendChild(hymns);
 
-  $('[data-notes]', el).addEventListener('click', () => go(course==='intermediate'?'#/notes/intermediate':'#/notes/all'));
+  $('[data-notes]', el).addEventListener('click', () => go('#/notes/'+courseInfo.notes));
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
   el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
@@ -430,8 +431,14 @@ function showLesson(id, stepIndex) {
       return;
     }
     if (lesson.daily) {
-      if (id === 'daily') store.practised(store.setting('course')==='intermediate'?'intermediate:'+today():today());
+      if (id === 'daily') store.practised(practiceKey(store.setting('course'),today()));
       return celebrate(lesson, null, id === 'drill' ? () => go('#/lesson/drill/0') : step.t === 'play' ? () => route() : null);
+    }
+    // A multi-piece advanced recital needs every performance, even after a reload.
+    if (lesson.recital && lesson.course==='advanced') {
+      const required=lesson.steps.map((s,i)=>s.final?i:null).filter(i=>i!==null);
+      const played=store.data.recitalRuns?.[id] || [];
+      if (!required.every(i=>played.includes(i))) { toast('Play every performance in this recital before finishing.'); return; }
     }
     store.markDone(id);
     // From the Hymns shelf, the next hymn; otherwise the next lesson in the course.
@@ -449,6 +456,10 @@ function showLesson(id, stepIndex) {
     playAlong: `#/play/${id}/${stepIndex}`,
     complete: () => {
       stepDone = true;
+      if (lesson.recital && lesson.course==='advanced' && step.final) {
+        store.data.recitalRuns={...store.data.recitalRuns,[id]:[...new Set([...(store.data.recitalRuns?.[id]||[]),stepIndex])]};
+        store.save();
+      }
       const btn = $('[data-next]', el);
       btn.classList.add('ready');
     },
@@ -463,7 +474,7 @@ function showLesson(id, stepIndex) {
 
 // "3 days in a row", counting back from today (or yesterday, if not yet today).
 function streakText() {
-  const days = Object.fromEntries(Object.entries(store.data.practice || {}).filter(([k])=>store.setting('course')==='intermediate'?k.startsWith('intermediate:'):!k.includes(':')).map(([k,v])=>[k.replace('intermediate:',''),v]));
+  const days = Object.fromEntries(Object.entries(store.data.practice || {}).filter(([k])=>validCourse(store.setting('course'))==='beginner'?!k.includes(':'):k.startsWith(validCourse(store.setting('course'))+':')).map(([k,v])=>[k.split(':').at(-1),v]));
   const d = new Date();
   if (!days[today(d)]) d.setDate(d.getDate() - 1);
   let n = 0;

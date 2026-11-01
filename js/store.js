@@ -1,3 +1,4 @@
+import { courseForLesson } from './courses.js';
 // Progress and settings, saved on this device only.
 
 const KEY = 'piano-tutor:v1';
@@ -5,6 +6,7 @@ const KEY = 'piano-tutor:v1';
 const defaults = {
   done: {},          // lessonId -> true
   last: null,
+  recitalRuns: {},    // completed performance step indexes in advanced recital suites
   lastByCourse: {},        // { lesson, step }
   practice: {},      // "2026-10-24" -> true, days with daily practice done
   best: {},          // reading drill -> fastest time in seconds
@@ -37,7 +39,7 @@ export const store = {
   markDone(id) { this.data.done[id] = true; this.save(); },
   isDone(id) { return !!this.data.done[id]; },
   practised(day) { this.data.practice = { ...this.data.practice, [day]: true }; this.save(); },
-  setLast(lesson, step) { this.data.last = { lesson, step }; const course=lesson.startsWith('int-')?'intermediate':'beginner'; this.data.lastByCourse={...this.data.lastByCourse,[course]:{lesson,step}}; this.data.settings.course=course; this.save(); },
+  setLast(lesson, step) { this.data.last = { lesson, step }; const course=courseForLesson(lesson); this.data.lastByCourse={...this.data.lastByCourse,[course]:{lesson,step}}; this.data.settings.course=course; this.save(); },
   setting(k, v) {
     if (v === undefined) return this.data.settings[k];
     this.data.settings[k] = v;

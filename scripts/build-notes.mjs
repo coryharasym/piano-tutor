@@ -32,8 +32,8 @@ try {
   await page.evaluate(() => document.fonts.ready);
   await page.emulateMedia({ media: 'print' });
   await mkdir(resolve(root, 'notes'), { recursive: true });
-  for (const id of [...UNITS.map(u => u.id), 'all', 'intermediate']) {
-    await page.evaluate(id => document.querySelectorAll('.notes-chapter').forEach(el => { el.style.display = (id==='all' ? el.dataset.chapter.startsWith('u') : id==='intermediate' ? el.dataset.chapter.startsWith('i') : el.dataset.chapter===id) ? '' : 'none'; }), id);
+  for (const id of [...UNITS.map(u => u.id), 'all', 'intermediate', 'advanced']) {
+    await page.evaluate(id => document.querySelectorAll('.notes-chapter').forEach(el => { el.style.display = (id==='all' ? el.dataset.chapter.startsWith('u') : id==='intermediate' ? el.dataset.chapter.startsWith('i') : id==='advanced' ? el.dataset.chapter.startsWith('a') : el.dataset.chapter===id) ? '' : 'none'; }), id);
     await page.pdf({ path: resolve(root, pdfPath(id)), format: 'Letter', preferCSSPageSize: true, printBackground: true,
       displayHeaderFooter: true, headerTemplate: '<span></span>',
       footerTemplate: `<div style="width:100%;text-align:center;font:8px Arial;color:#666">Piano Tutor · Chapter notes · ${NOTES_VERSION} · <span class="pageNumber"></span> / <span class="totalPages"></span></div>`,

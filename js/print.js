@@ -32,7 +32,7 @@ export function songbook(course) {
     let last = -1;
     lesson.steps.forEach((s, i) => { if (s.t === 'play' && s.song) last = i; });
     const finals=lesson.steps.map((s,i)=>s.final&&s.song?i:-1).filter(i=>i>=0);
-    if(lesson.course==='intermediate'&&finals.length>1) finals.forEach(i=>songs.push({unit,lesson,stepIndex:i}));
+    if(finals.length>1) finals.forEach(i=>songs.push({unit,lesson,stepIndex:i}));
     else if (last >= 0) songs.push({ unit, lesson, stepIndex: last });
   };
   UNITS.filter(u=>!course || u.course===course).forEach((unit) => unit.lessons.forEach((lesson) => { if (!lesson.recital) add(unit, lesson); }));

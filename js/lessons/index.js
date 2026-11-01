@@ -1,3 +1,5 @@
+import { ADVANCED_UNITS, ADVANCED_HYMNS } from './advanced.js';
+export { ADVANCED_UNITS } from './advanced.js';
 import { INTERMEDIATE_UNITS, INTERMEDIATE_HYMNS } from './intermediate.js';
 export { INTERMEDIATE_UNITS } from './intermediate.js';
 import u1 from './unit1.js';
@@ -19,8 +21,8 @@ export { chooseRecital } from './recitals.js';
 const EXTRAS = [...DOXOLOGY_LESSONS, ...PRACTICE_SONGS];
 const withExtras = (u) => u.lessons.flatMap((l) => [l, ...EXTRAS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
 export const BEGINNER_UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, course: 'beginner', number: i + 1, lessons: [...withExtras(u), RECITALS[u.id]] }));
-export const UNITS = [...BEGINNER_UNITS, ...INTERMEDIATE_UNITS];
-export const courseUnits = (course = 'beginner') => course === 'intermediate' ? INTERMEDIATE_UNITS : BEGINNER_UNITS;
+export const UNITS = [...BEGINNER_UNITS, ...INTERMEDIATE_UNITS, ...ADVANCED_UNITS];
+export const courseUnits = (course = 'beginner') => course === 'advanced' ? ADVANCED_UNITS : course === 'intermediate' ? INTERMEDIATE_UNITS : BEGINNER_UNITS;
 const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson })));
 
 // Every hymn and recital piece, playable any time from the Hymns shelf.
@@ -28,7 +30,7 @@ export const HYMN_SHELF = { id: 'hymns', title: 'Hymns' };
 // In course order, each labelled with its unit's number.
 const BEGINNER_HYMNS = PIECES.map((p) => ({ ...p, unitNumber: UNITS.find((u) => u.id === p.unit).number }))
   .sort((a, b) => a.unitNumber - b.unitNumber);
-export const HYMNS = [...BEGINNER_HYMNS.map(p=>({...p,course:'beginner'})),...INTERMEDIATE_HYMNS];
+export const HYMNS = [...BEGINNER_HYMNS.map(p=>({...p,course:'beginner'})),...INTERMEDIATE_HYMNS,...ADVANCED_HYMNS];
 const SHELF = HYMNS.map((lesson) => ({ unit: HYMN_SHELF, lesson }));
 
 // Lessons made on the fly (daily practice, drills) are added here.
