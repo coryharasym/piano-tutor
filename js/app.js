@@ -1,3 +1,4 @@
+import { buildWarmup } from './warmup.js';
 import { recitalRunKey } from './lessons/recital-choices.js';
 import { COURSES, validCourse, practiceKey } from './courses.js';
 import { UNITS, HYMNS, courseUnits, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
@@ -31,6 +32,8 @@ window.addEventListener('hashchange', route);
 function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
+  // Reuse this warm-up while navigating its steps; refresh on a new start or course.
+  if (id==='warmup' && (!findLesson(id) || Number(step)===0 || findLesson(id).lesson.course!==validCourse(store.setting('course')))) addLesson(PRACTICE_SHELF,buildWarmup(store.data.done,store.setting('course'),today()));
   // Daily practice is built for today; the drill gets fresh notes on each visit.
   if (id === 'daily' && dailyReady(store.data.done, store.setting('course'))) addLesson(PRACTICE_SHELF, buildDaily(store.data.done, today(), store.setting('course')));
   if (id === 'drill' && (view !== 'lesson' || !findLesson('drill') || Number(step) === 0)) addLesson(PRACTICE_SHELF, buildDrill(store.data.done, store.setting('course')));
@@ -164,17 +167,24 @@ function showHome() {
   const practiceDay=practiceKey(course,today());
   const doneToday = store.data.practice?.[practiceDay];
   const daily = h(`<div class="practice-col">
+    <div class="practice-cards">
+    <button class="warmup-card" data-warmup aria-label="Start warm-up · About 3 minutes">
+      <span class="eyebrow">Warm-up</span><span class="title">Start warm-up</span>
+      <span class="muted">About 3 minutes · Gentle, familiar patterns</span>
+    </button>
     <button class="daily-card ${doneToday ? 'done' : ''}" ${ready ? '' : 'disabled'}>
       <span class="eyebrow">${doneToday ? `${icons.check} Done today` : 'Daily practice'}</span>
       <span class="title">Today's practice</span>
       <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : 'Unlocks after '+courseInfo.unlock}</span>
     </button>
+    </div>
     <div class="tool-row">
       <button class="pill" data-metronome>${icons.metronome}<span>Metronome</span></button>
       <button class="pill" data-drill ${(store.isDone('treble-reading') || course!=='beginner') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
     </div>
   </div>`);
   cont.appendChild(daily);
+  $('[data-warmup]', daily).addEventListener('click',()=>go('#/lesson/warmup/0'));
   $('.daily-card', daily).addEventListener('click', () => go('#/lesson/daily/0'));
   $('[data-metronome]', daily).addEventListener('click', () => go('#/metronome'));
   $('[data-drill]', daily).addEventListener('click', () => go('#/lesson/drill/0'));
@@ -412,7 +422,7 @@ function showLesson(id, stepIndex) {
       <div class="dots">${lesson.steps.map((s, i) => `<i class="${i < stepIndex ? 'past' : i === stepIndex ? 'now' : ''}"></i>`).join('')}</div>
       <div class="top-actions"></div>
       <button class="icon-btn" data-prev aria-label="Previous step" ${stepIndex === 0 ? 'disabled' : ''}>${icons.back}</button>
-      <button class="icon-btn primary" data-next aria-label="${isLast ? 'Finish lesson' : 'Next step'}">${isLast ? icons.check : icons.next}</button>
+      <button class="icon-btn primary" data-next aria-label="${isLast ? lesson.warmup?'Finish warm-up':'Finish lesson' : 'Next step'}">${isLast ? icons.check : icons.next}</button>
     </header>
     <section class="stage"></section>
   </main>`);
@@ -430,6 +440,9 @@ function showLesson(id, stepIndex) {
     if (lesson.recital && step.final && !stepDone) {
       toast('Play your recital all the way through to earn the ribbon.');
       return;
+    }
+    if (lesson.warmup) {
+      return celebrate(lesson,dailyReady(store.data.done,lesson.course)?{id:'daily',title:'Daily Practice'}:null,()=>go('#/lesson/warmup/0'));
     }
     if (lesson.daily) {
       if (id === 'daily') store.practised(practiceKey(store.setting('course'),today()));
@@ -491,12 +504,12 @@ function showMetronome() {
 function celebrate(lesson, nxt, again) {
   const dlg = h(`<div class="sheet-backdrop celebrate"><div class="sheet">
     <div class="confetti">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
-    ${lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : lesson.daily ? '<h2>Practice done</h2>' : '<h2>Lesson complete</h2>'}
+    ${lesson.warmup ? '<h2>Warm-up complete</h2>' : lesson.recital ? `<div class="medal">${icons.ribbon}</div><h2>Recital passed!</h2>` : lesson.daily ? '<h2>Practice done</h2>' : '<h2>Lesson complete</h2>'}
     <p class="muted">${lesson.id === 'daily' ? streakText() : lesson.title}</p>
     <div class="sheet-actions">
-      <button class="text-btn" data-home>All lessons</button>
-      ${again ? `<button class="btn" data-again>${icons.restart} ${lesson.id === 'drill' ? 'New notes' : 'Play again'}</button>` : ''}
-      ${nxt ? `<button class="btn primary" data-next>Next: ${nxt.title}</button>` : ''}
+      <button class="text-btn" data-home>${lesson.warmup?'Continue to lessons':'All lessons'}</button>
+      ${again ? `<button class="btn" data-again>${icons.restart} ${lesson.warmup?'Repeat warm-up':lesson.id === 'drill' ? 'New notes' : 'Play again'}</button>` : ''}
+      ${nxt ? `<button class="btn primary" data-next>${lesson.warmup?'Continue to Daily Practice':'Next: '+nxt.title}</button>` : ''}
     </div>
   </div></div>`);
   $('[data-home]', dlg).addEventListener('click', () => { dlg.remove(); go('#/'); });
@@ -673,7 +686,7 @@ function renderPlay(step, ctx) {
       renderStaff(music, {
         staves: staves.map((s) => ({ clef: s.clef, events: s.events })),
         key: step.key || 'C', time: step.time || '4/4', pickup: step.pickup,
-        current: cur && !fin ? { staff: cur.staff, index: cur.index } : null, done, showNames: step.names,
+        current: cur && !fin ? { staff: cur.staff, index: cur.index } : null, done, showNames: step.names, showFingers: !!step.showFingers,
       });
       return;
     }

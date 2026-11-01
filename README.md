@@ -146,3 +146,32 @@ Both choices are always available on the hymn shelf, in the course songbook and
 in the chapter/course PDF notes, irrespective of the currently selected recital.
 The Intermediate songbook contains 34 entries and Advanced contains 36 entries,
 including every piece in both final programmes.
+
+## Warm-up
+
+The home page has a Start warm-up card beside Daily Practice. This optional,
+self-paced routine takes about three minutes, including setup and brief pauses:
+settle in, right hand, left hand, hand coordination, a small musical phrase and
+a closing check. Each playing pattern has two short rounds at a comfortable
+reference tempo. Listen, slower demonstration speed, microphone/on-screen input,
+finger guidance, Start again, Play again and Play along remain available.
+
+A new beginner starts with gentle Middle C notes. Each hand moves to a five-finger
+pattern after its C-position lesson. Hands play together after a corresponding
+coordination lesson. Scale and broken-chord variants use completed skills, with
+small deterministic variations among learned keys. Advanced two-octave C-major
+work requires the relevant scale lesson. No wide blocked chords, octave grips,
+speed targets, countdown or personal-best awards are introduced.
+
+Warm-ups use the dynamic practice shelf, never the course curriculum. They leave
+lesson completion, resume points, daily streaks and best times unchanged. At the
+end, learners can repeat the warm-up, return to lessons or continue into Daily
+Practice when it is unlocked. An active warm-up keeps its patterns while moving
+between steps and Play along; a new start refreshes for the current course and
+learned skills. The home-only stylesheet does not change printed chapter notes.
+
+The routine is newly authored. Healthy-practice references informing the approach:
+https://www.ism.org/advice/how-to-become-a-healthy-instrumentalist/
+and https://www.bapam.org.uk/dont-cramp-your-style/ . The app cannot assess
+physical technique or certify a warm-up as injury prevention. Prompts encourage
+comfortable movement and stopping when anything hurts.
