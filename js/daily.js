@@ -1,3 +1,4 @@
+import { COURSES, validCourse } from './courses.js';
 // Daily practice: a short session built from the lessons already finished,
 // plus a note-reading drill that's new every time.
 
@@ -86,9 +87,10 @@ function readingStep(rand, clef, done, extra = {}) {
 }
 
 // Is there enough to build a session yet?
-export const dailyReady = (done, course='beginner') => course==='intermediate' ? !!done['int-readiness'] : !!done['rh-c-position'];
+export const dailyReady = (done, course='beginner') => !!done[COURSES[validCourse(course)].readiness];
 
 export function buildDaily(done, date = today(), course='beginner') {
+  if(course==='advanced') return buildAdvancedDaily(done,date);
   if(course==='intermediate') return buildIntermediateDaily(done,date);
   const rand = seeded(date);
   const steps = [{
@@ -129,6 +131,7 @@ export function buildDaily(done, date = today(), course='beginner') {
 
 // A reading drill: new notes every time, timed so you can watch yourself speed up.
 export function buildDrill(done, course='beginner') {
+  if(course==='advanced') return {id:'drill',course:'advanced',daily:true,title:'Advanced reading drill',summary:'Read both clefs in a changing key.',steps:[advancedReading(Math.random,{timed:'advanced-reading'})]};
   if(course==='intermediate') {
     const pool=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5','F5','G5'];
     const notes=Array.from({length:12},()=>pick(Math.random,pool));
@@ -156,4 +159,22 @@ function buildIntermediateDaily(done,date) {
   if(hymns.length){const hymn=pick(rand,hymns);steps.push({...hymn.steps.filter(s=>s.t==='play'&&s.song).at(-1),title:'Hymn review: '+hymn.title});}
   steps.push({t:'read',title:'One musical goal',body:'<p>Play the last phrase again without looking at highlighted keys. Name one improvement and choose a small goal for tomorrow. Keep listening for a clear melody, a steady pulse and comfortable movement.</p>'});
   return {id:'daily',daily:true,title:'Today’s intermediate practice',summary:'A learned skill, fresh reading and a hymn.',steps};
+}
+
+// Short original tonal reading phrases, with separate keys for timed drill records.
+function advancedReading(rand,extra={}) {
+ const keys=[{key:'A',pool:['A4','B4','C#5','D5','E5','F#5','G#5'],bass:['A2','D3','E3','A2']},{key:'Eb',pool:['Eb4','F4','G4','Ab4','Bb4','C5','D5'],bass:['Eb3','Ab2','Bb2','Eb3']}];
+ const k=pick(rand,keys);let index=Math.floor(rand()*4);const notes=[];
+ for(let i=0;i<16;i++){notes.push(k.pool[index]);index=Math.max(0,Math.min(6,index+(rand()<.5?-1:1)));}
+ return {t:'play',title:'Read a new phrase in '+k.key,say:'Preview the key, bass changes and melodic direction before starting. Keep the line moving. A timed drill measures note-finding speed, not phrasing or musical rhythm.',rh:notes.map(n=>n+'/q').join(' '),lh:k.bass.map(n=>n+'/w').join(' '),key:k.key,staff:true,names:false,hint:false,noDemo:true,keyLabels:'c',tempo:60,range:['Ab2','G#5'],...extra};
+}
+function buildAdvancedDaily(done,date) {
+ const rand=seeded('advanced:'+date),completed=UNITS.filter(u=>u.course==='advanced').flatMap(u=>u.lessons).filter(l=>done[l.id]&&!l.recital);
+ const skills=completed.filter(l=>!l.steps.some(s=>s.song)),hymns=completed.filter(l=>l.steps.some(s=>s.song));
+ const skill=skills.length?pick(rand,skills):UNITS.find(u=>u.id==='a1').lessons[0];
+ const steps=[{t:'read',title:'Today’s advanced practice',body:'<p>Choose one technical repair, read a fresh tonal phrase, and shape a learned hymn. Start with comfortable movement and finish by naming one audible improvement. Practise any creative alternative away from the written reference check.</p>'},
+ {...skill.steps.find(s=>s.t==='play'),title:'Skill review: '+skill.title},advancedReading(rand)];
+ if(hymns.length){const h=pick(rand,hymns);steps.push({...h.steps.filter(s=>s.t==='play'&&s.song).at(-1),title:'Hymn review: '+h.title});}
+ steps.push({t:'read',title:'Listen and decide',body:'<p>Play a phrase from memory or transpose it offline. Then assess melody, bass, pulse and pedal. Write one specific goal for the next session.</p>'});
+ return {id:'daily',course:'advanced',daily:true,title:'Today’s advanced practice',summary:'A learned skill, tonal reading and a musical decision.',steps};
 }

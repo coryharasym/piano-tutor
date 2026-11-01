@@ -471,3 +471,5 @@ li { margin-bottom: .25em; }
 .home-head { flex-wrap:wrap; }
 .home-head > div:first-child { min-width:0; flex:1 1 240px; }
 .home-head .head-actions { flex:1 1 440px; min-width:0; max-width:100%; }
+/* A labelled home mic needs room for its text as well as the icon. */
+.home-head .mic-btn { width:auto; gap:6px; white-space:nowrap; }

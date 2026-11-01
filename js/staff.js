@@ -3,7 +3,7 @@
 import { beatsOf } from './theory.js';
 
 const KEY_SIG_ACCIDENTALS = {
-  C: {}, G: { F: '#' }, D: { F: '#', C: '#' }, F: { B: 'b' }, Bb: { B: 'b', E: 'b' }, Eb: { B:'b', E:'b', A:'b' }, Am: {}, Em: { F: '#' }, Dm: { B: 'b' },
+  A:{F:'#',C:'#',G:'#'}, E:{F:'#',C:'#',G:'#',D:'#'}, B:{F:'#',C:'#',G:'#',D:'#',A:'#'}, Ab:{B:'b',E:'b',A:'b',D:'b'}, Fm:{B:'b',E:'b',A:'b',D:'b'}, Bm:{F:'#',C:'#'}, 'F#m':{F:'#',C:'#',G:'#'}, Cm:{B:'b',E:'b',A:'b'}, Gm:{B:'b',E:'b'}, C: {}, G: { F: '#' }, D: { F: '#', C: '#' }, F: { B: 'b' }, Bb: { B: 'b', E: 'b' }, Eb: { B:'b', E:'b', A:'b' }, Am: {}, Em: { F: '#' }, Dm: { B: 'b' },
 };
 
 const VF_DUR = { w: 'w', 'h.': 'h', h: 'h', 'q.': 'q', q: 'q', '8.': '8', 8: '8', 16: '16', '8t':'8' };

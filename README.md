@@ -4,7 +4,7 @@ A mobile-friendly web app that teaches classical piano from the very beginning. 
 
 ## What's inside
 
-- **Beginner and Intermediate courses:** seven beginner chapters and eight intermediate chapters, with 64 new intermediate lessons focused on hymn playing.
+- **Three courses:** seven beginner chapters, eight intermediate chapters and eight advanced chapters. Intermediate and Advanced each add 64 hymn-focused lessons.
 - **Read, look, play:** each lesson mixes short explanations, illustrations, quizzes and practice.
 - **Listens to you play:** pitch detection on the phone's microphone, tuned for piano. Repeated notes and chords work too. You can always tap the on-screen keys instead.
 - **Real piano sound:** sampled grand piano for every key, demo playback ("Listen") and a count-in for rhythm.
@@ -57,7 +57,7 @@ self-assessment checklists. All recital choices are included, independent of a
 learner's saved selection. Full scores remain in the Songbook.
 
 After changing lessons, illustrations, notation, or notes styling, regenerate and
-commit the eight PDFs and `notes/source.sha256`:
+commit the chapter and course PDFs and `notes/source.sha256`:
 
 ```sh
 npm install --no-save playwright
@@ -73,7 +73,7 @@ runtime PDF service or additional browser dependency.
 
 ## Intermediate course
 
-Use the Beginner / Intermediate buttons at the top of the home page. The
+Use the Beginner / Intermediate / Advanced buttons at the top of the home page. The
 intermediate course has eight chapters and 64 new lessons: five skill lessons,
 two guided hymn studies and a recital in each chapter. It starts with a
 transition from the beginner course and ends with a two-hymn programme.
@@ -97,3 +97,35 @@ For browser checks, install Playwright and Chromium and run `npm run test:browse
 set `CHROMIUM_EXECUTABLE_PATH` when using a system Chromium. It starts its own
 local server and checks the courses at a phone-landscape viewport. `npm test`
 includes course isolation, source integrity, triplet timing and backup checks.
+
+## Advanced course
+
+Eight chapters and 64 new lessons balance solo hymn playing and accompanying
+singers on an 88-key piano with sustain pedal. Each chapter has five original
+skill lessons, two guided hymn studies and a recital. The final recital includes
+three contrasting complete pieces. New source-checked repertoire includes
+Eternal Father, Strong to Save and Jesus, the Very Thought of Thee, alongside
+new arrangements of familiar hymns. See `sources/advanced/README.md` for retained
+editions, rights, lyric references, transpositions and reductions.
+
+The course teaches purposeful practice, more major/minor keys, broad arpeggios,
+comfortable octave alternatives, four-part reading, secondary dominants,
+modulation, two against three, voicing, pedal, transposition, introductions,
+by-ear learning, singer accompaniment and performance. Creative work is evaluated
+through listening and reflection, away from the fixed reference-score check.
+Combined chorale scores are explicitly melody-led reductions; separate source
+voice exercises and linked source scores support independent four-part reading.
+
+Progress, resume points, songbooks, daily practice and reading records are
+separate for all three courses. Backup/restore preserves them together. Advanced
+recital suites track each completed reference performance before awarding the
+ribbon. This does not certify physical technique, expression or a musical grade.
+
+The Advanced Chapter notes button opens eight chapter PDFs and a complete
+advanced-course PDF. All 23 chapters and three course collections are built from
+the same curriculum. Run `npm run build:notes` after changes and `npm test` for
+source freshness and all core regressions. `npm run test:browser` additionally
+requires Playwright with Chromium; use `CHROMIUM_EXECUTABLE_PATH` for a custom
+browser executable. Real iPhone/keyboard microphone and pedal behaviour still
+requires physical device review; the existing automatic-accompaniment microphone
+suppression is unchanged by the advanced course.

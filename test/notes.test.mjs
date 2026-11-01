@@ -4,7 +4,7 @@ import { UNITS, chooseRecital } from '../js/lessons/index.js';
 import { chapterHTML, chapterLessons, pdfPath, escapeHTML } from '../js/notes.js';
 import { notesFingerprint } from '../scripts/notes-source.mjs';
 
-assert.equal(UNITS.length, 15);
+assert.equal(UNITS.length, 23);
 for (const unit of UNITS) {
   const html = chapterHTML(unit);
   const lessons = chapterLessons(unit);
@@ -26,9 +26,9 @@ for (const unit of UNITS) {
 assert.equal(escapeHTML('<a "x">&'), '&lt;a &quot;x&quot;&gt;&amp;');
 const fingerprint = (await readFile(new URL('../notes/source.sha256', import.meta.url), 'utf8')).trim();
 assert.equal(await notesFingerprint(), fingerprint, 'Curriculum or layout changed: run npm run build:notes and commit the regenerated PDFs');
-for (const id of [...UNITS.map(u => u.id), 'all', 'intermediate']) {
+for (const id of [...UNITS.map(u => u.id), 'all', 'intermediate', 'advanced']) {
   const pdf = await readFile(new URL(`../${pdfPath(id)}`, import.meta.url));
   assert(pdf.subarray(0, 5).equals(Buffer.from('%PDF-')));
   assert(pdf.length > 10000, `${id}: unexpectedly small PDF`);
 }
-console.log('Fifteen complete chapters, all recital choices, seventeen PDFs and source freshness passed');
+console.log('Twenty-three complete chapters, all recital choices, twenty-six PDFs and source freshness passed');
