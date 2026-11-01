@@ -43,7 +43,7 @@ for(const u of ADVANCED_UNITS){assert.equal(u.lessons.length,8);assert.equal(u.l
  }
  }}
 const final=ADVANCED_UNITS.at(-1).lessons.at(-1);assert.equal(final.steps.filter(s=>s.final).length,3);
-const book=songbook('advanced');assert.equal(book.length,26);assert.ok(book.every(x=>x.lesson.course==='advanced'));
+const book=songbook('advanced');assert.equal(book.length,36);assert.ok(book.every(x=>x.lesson.course==='advanced'));
 assert.equal(book.filter(x=>x.lesson.id==='adv-hymn-a8').length,3);
 for(const course of ['beginner','intermediate'])assert.ok(songbook(course).every(x=>x.lesson.course!=='advanced'));
 assert.ok(dailyReady({'adv-readiness':true},'advanced'));assert.ok(!dailyReady({'int-readiness':true},'advanced'));assert.ok(!dailyReady({'adv-readiness':true},'beginner'));
@@ -52,4 +52,4 @@ assert.ok(buildDrill({},'advanced').steps.every(s=>s.timed==='advanced-reading')
 globalThis.localStorage={getItem:()=>null,setItem(){}};const {store}=await import('../js/store.js');
 store.setLast('mary',1);store.setLast('int-triplets',2);store.setLast('adv-two-against-three',1);store.markDone('adv-readiness');store.practised(practiceKey('advanced','2026-11-01'));const backup=store.backup();store.reset();store.restore(backup);
 assert.equal(store.data.settings.course,'advanced');assert.equal(store.data.lastByCourse.beginner.lesson,'mary');assert.equal(store.data.lastByCourse.intermediate.lesson,'int-triplets');assert.equal(store.data.lastByCourse.advanced.lesson,'adv-two-against-three');assert.ok(store.isDone('adv-readiness'));assert.ok(store.data.practice['advanced:2026-11-01']);
-console.log('64 advanced lessons, 3 retained source editions, source melodies, 26 songbook arrangements, '+loops+' loops, daily practice and three-course backup passed');
+console.log('64 advanced lessons, 3 retained source editions, source melodies, 36 songbook arrangements, '+loops+' loops, daily practice and three-course backup passed');

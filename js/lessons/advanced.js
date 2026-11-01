@@ -1,3 +1,4 @@
+import { selectableRecital } from './recital-choices.js';
 import { advancedSkills } from './advanced-curriculum.js';
 import { arrange, study, recital, rangeOf } from './advanced-tools.js';
 const chorale=(id,extra={})=>arrange(id,'chorale',extra);
@@ -50,9 +51,22 @@ const chapters=[
  ['melita-dress','Dress rehearsal: flowing movement in F',melitaFinal,'Keep the eighth-note accompaniment even beneath a clear chromatic tune. Prepare the new key before the first note.','Record the whole performance. Choose one movement repair and one musical change, then test both in the complete phrase.'],
  'Final programme: chorale, lyrical hymn and flowing hymn',[agnes,abideLyrical,melitaFinal],'Perform three complete contrasting hymns with a short silence between them. Show a clear melody, reliable pulse, comfortable movement, clean pedal, planned interpretation and calm recovery. Practise a personal interpretation offline before playing these written reference arrangements.'],
 ];
+const alternatives=[
+ ['Jesus, the Very Thought of Thee: a clear chorale',[agnes],'Read ahead in G major, keep the upper voice clear and play the complete hymn with planned movement, a steady pulse and a deliberate ending.'],
+ ['Crown Him with Many Crowns: octave colour',[crown],'Use comfortable octave movement above light supporting notes. Release unnecessary tension and keep the melodic pulse steady through every position change.'],
+ ['Abide with Me: chorale reading',[abide],'Understand the source outer and inner voices, then present the complete melody-led piano reduction with a singing tune and quiet supporting notes.'],
+ ['Just As I Am: harmonic direction',[chorale('woodworth',{tempo:60})],'Hear the guiding tones and cadences in this 6/4 setting. Prepare each harmony, resolve tension clearly and keep the melody above the supporting notes.'],
+ ['Come Thou Fount: confident subdivision',[fount],'Maintain a stable three-quarter bar while the accompaniment moves in even eighths. Keep the pickup light and resist rushing at position changes.'],
+ ['Abide with Me: lyrical piano',[abideLyrical],'Choose a long phrase destination, voice the melody above its supporting tones and listen for clean pedal changes and a prepared final release.'],
+ ['Holy, Holy, Holy in F: accompany with confidence',[chorale('nicaea',{shift:3,key:'F',tempo:60})],'Prepare the singer’s key and a recognizable introduction offline, then keep the written F-major model clear, steady and supportive. Rehearse breaths and the final release with a singer if possible.'],
+ ['Final programme: Holy, Holy, Holy; It Is Well; Come Thou Fount',[holy,well,flowing('nettleton',{shift:3,key:'F',tempo:66})],'Perform all three complete hymns with short silences between them. Contrast a broad chorale, a lyrical line and flowing movement; keep a clear melody, clean pedal, steady pulse, planned interpretation and calm recovery.'],
+];
 export const ADVANCED_HYMNS=[];
 export const ADVANCED_UNITS=chapters.map(([title,blurb,a,b,recitalTitle,pieces,criteria],i)=>{
- const id='a'+(i+1),rec=recital(id,recitalTitle,pieces,criteria);ADVANCED_HYMNS.push(rec.piece);
- return {id,number:i+1,title,blurb,course:'advanced',checklist:[...advancedSkills[i].map(l=>l.summary),criteria],lessons:[...advancedSkills[i],study(...a),study(...b),rec.lesson]};
+ const id='a'+(i+1),rec=recital(id,recitalTitle,pieces,criteria),alt=recital(id,...alternatives[i]);
+ alt.piece.id+='-alternative';
+ const choices=[rec.piece,alt.piece];ADVANCED_HYMNS.push(...choices);
+ const recitalLesson=selectableRecital(rec.lesson,choices);
+ return {id,number:i+1,title,blurb,course:'advanced',checklist:[...advancedSkills[i].map(l=>l.summary),'Perform my chosen recital with its stated musical goals, clear voicing, reliable pulse, comfortable movement and a deliberate ending.'],lessons:[...advancedSkills[i],study(...a),study(...b),recitalLesson]};
 });
-for(const unit of ADVANCED_UNITS)for(const lesson of unit.lessons)for(const step of lesson.steps)if(step.t==='play')step.range=rangeOf(step);
+for(const unit of ADVANCED_UNITS)for(const lesson of unit.lessons.flatMap(l=>l.recital?l.choices:[l]))for(const step of lesson.steps)if(step.t==='play')step.range=rangeOf(step);

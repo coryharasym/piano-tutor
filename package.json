@@ -5,8 +5,8 @@
   "description": "Classical piano lessons for beginners, with a keyboard that listens.",
   "scripts": {
     "start": "python3 -m http.server 8080",
-    "test": "node test/lessons.test.mjs && node test/practice.test.mjs && node test/playalong.test.mjs && node test/pitch.test.mjs && node test/chords.test.mjs && node test/samples.test.mjs && node test/calibration.test.mjs && node test/key-capture.test.mjs && node test/intermediate.test.mjs && node test/advanced.test.mjs && node test/notes.test.mjs",
+    "test": "node test/lessons.test.mjs && node test/practice.test.mjs && node test/playalong.test.mjs && node test/pitch.test.mjs && node test/chords.test.mjs && node test/samples.test.mjs && node test/calibration.test.mjs && node test/key-capture.test.mjs && node test/intermediate.test.mjs && node test/advanced.test.mjs && node test/recital-choices.test.mjs && node test/notes.test.mjs",
     "build:notes": "node scripts/build-notes.mjs",
-    "test:browser": "node scripts/check-intermediate-browser.mjs && node scripts/check-advanced-browser.mjs"
+    "test:browser": "node scripts/check-intermediate-browser.mjs && node scripts/check-advanced-browser.mjs && node scripts/check-recital-choices-browser.mjs"
   }
 }

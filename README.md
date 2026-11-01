@@ -129,3 +129,20 @@ requires Playwright with Chromium; use `CHROMIUM_EXECUTABLE_PATH` for a custom
 browser executable. Real iPhone/keyboard microphone and pedal behaviour still
 requires physical device review; the existing automatic-accompaniment microphone
 suppression is unchanged by the advanced course.
+
+## Two recital choices per chapter
+
+Intermediate and Advanced chapters each offer two recital choices, using the same
+selection screen as Beginner. Original recital and hymn IDs remain valid. Each
+alternative is a different complete hymn matched to the chapter skills, drawn
+from the already verified public-domain repertoire. The final Intermediate
+chapter offers two two-hymn programmes; Advanced offers two three-hymn programmes.
+You perform one chosen programme, not both.
+
+Selection persists by chapter and is included in progress backups. Completion of
+one option cannot satisfy another option's performance checks: performance records
+are keyed by lesson and piece ID. Existing completed lesson ribbons remain intact.
+Both choices are always available on the hymn shelf, in the course songbook and
+in the chapter/course PDF notes, irrespective of the currently selected recital.
+The Intermediate songbook contains 34 entries and Advanced contains 36 entries,
+including every piece in both final programmes.

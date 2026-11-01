@@ -54,7 +54,7 @@ try {
  await goLesson('adv-agnes-reading',4);await page.locator('[data-along]').click();await page.waitForSelector('[data-hand]');await page.locator('[data-hand]').click();
  await page.getByLabel('First bar').selectOption('1');await page.getByLabel('Last bar').selectOption('2');await page.getByRole('button',{name:'Loop off'}).click();assert.equal(await page.locator('[data-loop]').getAttribute('aria-pressed'),'true');
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByRole('button',{name:'Resume',exact:true}).click();
- await page.goto(origin+'/#/songbook');await page.waitForSelector('.paper');assert.equal(await page.locator('.paper').count(),26);
+ await page.goto(origin+'/#/songbook');await page.waitForSelector('.paper');assert.equal(await page.locator('.paper').count(),36);
  // Test the actual lesson completion controller through its keyboard input callback.
  await page.evaluate(async()=>{
   const {Keyboard}=await import('./js/keyboard.js');const bind=Keyboard.prototype.bindInput;
