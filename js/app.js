@@ -1,3 +1,4 @@
+import { recitalRunKey } from './lessons/recital-choices.js';
 import { COURSES, validCourse, practiceKey } from './courses.js';
 import { UNITS, HYMNS, courseUnits, findLesson, nextLesson, chooseRecital, addLesson } from './lessons/index.js';
 import { PRACTICE_SHELF, buildDaily, buildDrill, dailyReady, today } from './daily.js';
@@ -434,10 +435,10 @@ function showLesson(id, stepIndex) {
       if (id === 'daily') store.practised(practiceKey(store.setting('course'),today()));
       return celebrate(lesson, null, id === 'drill' ? () => go('#/lesson/drill/0') : step.t === 'play' ? () => route() : null);
     }
-    // A multi-piece advanced recital needs every performance, even after a reload.
-    if (lesson.recital && lesson.course==='advanced') {
+    // Each chosen recital needs its own performances, even after a reload or option switch.
+    if (lesson.recital && ['intermediate','advanced'].includes(lesson.course)) {
       const required=lesson.steps.map((s,i)=>s.final?i:null).filter(i=>i!==null);
-      const played=store.data.recitalRuns?.[id] || [];
+      const played=store.data.recitalRuns?.[recitalRunKey(lesson)] || [];
       if (!required.every(i=>played.includes(i))) { toast('Play every performance in this recital before finishing.'); return; }
     }
     store.markDone(id);
@@ -456,8 +457,8 @@ function showLesson(id, stepIndex) {
     playAlong: `#/play/${id}/${stepIndex}`,
     complete: () => {
       stepDone = true;
-      if (lesson.recital && lesson.course==='advanced' && step.final) {
-        store.data.recitalRuns={...store.data.recitalRuns,[id]:[...new Set([...(store.data.recitalRuns?.[id]||[]),stepIndex])]};
+      if (lesson.recital && ['intermediate','advanced'].includes(lesson.course) && step.final) {
+        store.data.recitalRuns={...store.data.recitalRuns,[recitalRunKey(lesson)]:[...new Set([...(store.data.recitalRuns?.[recitalRunKey(lesson)]||[]),stepIndex])]};
         store.save();
       }
       const btn = $('[data-next]', el);

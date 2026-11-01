@@ -13,7 +13,12 @@ import { RECITALS, PIECES } from './recitals.js';
 import { DOXOLOGY_LESSONS } from './doxology.js';
 import { PRACTICE_SONGS } from './songs.js';
 
-export { chooseRecital } from './recitals.js';
+import { chooseRecital as chooseBeginnerRecital } from './recitals.js';
+import { chooseCourseRecital } from './recital-choices.js';
+export function chooseRecital(unit, piece) {
+  chooseBeginnerRecital(unit, piece);
+  chooseCourseRecital(unit, piece);
+}
 
 // Each unit ends with its recital. Unit ids stay put when units are added,
 // so saved progress still matches; the number shown is the position here.

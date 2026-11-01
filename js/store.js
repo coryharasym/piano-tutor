@@ -6,7 +6,7 @@ const KEY = 'piano-tutor:v1';
 const defaults = {
   done: {},          // lessonId -> true
   last: null,
-  recitalRuns: {},    // completed performance step indexes in advanced recital suites
+  recitalRuns: {},    // choice-specific completed recital performance step indexes
   lastByCourse: {},        // { lesson, step }
   practice: {},      // "2026-10-24" -> true, days with daily practice done
   best: {},          // reading drill -> fastest time in seconds
@@ -20,12 +20,24 @@ const defaults = {
   },
 };
 
+// Older Advanced recitals had no choice screen and used lesson-only record keys.
+// Keep their completed performance steps on the original option, shifted by the chooser.
+function migrateRecitalRuns(data) {
+  const runs={...data.recitalRuns};
+  for(const [id,steps]of Object.entries(runs)) {
+    if(!/^adv-recital-a[1-8]$/.test(id)||!Array.isArray(steps))continue;
+    const key=id+':adv-hymn-'+id.split('-').at(-1);
+    if(!Object.hasOwn(runs,key))runs[key]=steps.filter(Number.isInteger).map(i=>i+1);
+  }
+  return {...data,recitalRuns:runs};
+}
+
 function read() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(defaults);
     const data = JSON.parse(raw);
-    return { ...structuredClone(defaults), ...data, settings: { ...defaults.settings, ...data.settings } };
+    return { ...structuredClone(defaults), ...migrateRecitalRuns(data), settings: { ...defaults.settings, ...data.settings } };
   } catch {
     return structuredClone(defaults);
   }
@@ -58,7 +70,7 @@ export const store = {
     if (file?.app !== 'piano-tutor' || !file.data?.done || typeof file.data.done !== 'object' || Array.isArray(file.data.done)) throw new Error('Not a Piano Tutor backup');
     const localCalibration = this.data.keyboardCalibration;
     const { keyboardCalibration, ...data } = file.data;
-    this.data = { ...structuredClone(defaults), ...data, settings: { ...defaults.settings, ...data.settings } };
+    this.data = { ...structuredClone(defaults), ...migrateRecitalRuns(data), settings: { ...defaults.settings, ...data.settings } };
     if (localCalibration) this.data.keyboardCalibration = localCalibration;
     this.save();
   },

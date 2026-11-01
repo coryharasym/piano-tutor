@@ -1,3 +1,4 @@
+import { selectableRecital } from './recital-choices.js';
 import { skillLessons } from './intermediate-curriculum.js';
 import { fromExisting, accompany, scoreStep, hymnStudy, recital, play, read, transpose } from './intermediate-tools.js';
 
@@ -65,15 +66,29 @@ const chapters=[
   ['confident-rehearsal','Dress rehearsal: Come Thou Fount',confident,'Maintain a confident pulse through the whole hymn. Use planned phrase landmarks to recover calmly.','Can you restart from three phrase beginnings without running in from the start?'],
   'A lyrical hymn and a confident hymn',[lyrical,confident],'Perform both complete hymns, with a short quiet pause between them. Keep the pulse, a clear melody, relaxed movement and a deliberate ending.'],
 ];
+// A different complete hymn for the same chapter goals; final options are programmes.
+const alternatives=[
+ ['The Doxology',[{...doxology,title:'The Doxology',tempo:64}],'Coordinate the complete melody and held bass with a steady pulse. Count through the Amen and release both hands together.'],
+ ['What a Friend We Have in Jesus',[{...friend,title:'What a Friend We Have in Jesus',tempo:68}],'Prepare F-major shapes, keep B-flat secure and move lightly through the broken-chord accompaniment.'],
+ ['When I Survey the Wondrous Cross',[{...survey,title:'When I Survey the Wondrous Cross',tempo:64}],'Connect compact chord shapes, hear the cadence and keep the tune clear above the supporting harmony.'],
+ ['Silent Night',[{...night,title:'Silent Night',tempo:72}],'Feel two large beats in each 6/8 bar. Place the pickup and dotted rhythms calmly and keep the shorter notes evenly spaced.'],
+ ['Abide with Me',[{...abide,title:'Abide with Me',tempo:60}],'Shape a singing melody above a quiet bass, connect the phrases and use clear pedal changes where the harmony calls for them.'],
+ ['The Doxology: supporting voices',[{...fromExisting('doxology-complete'),title:'The Doxology: supporting voices',tempo:64}],'Read the outer lines, add the supporting voices softly and sustain each written note while the other hand moves.'],
+ ['Be Thou My Vision',[{...vision,title:'Be Thou My Vision',tempo:66}],'Prepare your own short introduction offline, then perform the written flowing accompaniment with a clear tune and steady pulse.'],
+ ['Abide with Me and Blessed Assurance',[{...abide,title:'Abide with Me',tempo:60},{...assurance,title:'Blessed Assurance',tempo:84}],'Perform both complete hymns with a short quiet pause between them. Contrast a calm singing line with a confident 9/8 pulse; keep the melody clear and recover at planned landmarks.'],
+];
 export const INTERMEDIATE_HYMNS=[];
 export const INTERMEDIATE_UNITS=chapters.map(([title,blurb,a,b,recitalTitle,pieces,criteria],i)=>{
- const id='i'+(i+1);const rec=recital(id,recitalTitle,pieces,criteria);INTERMEDIATE_HYMNS.push(rec.piece);
- return {id,number:i+1,title,blurb,course:'intermediate',checklist:[...skillLessons[i].map(l=>l.summary),criteria],lessons:[...skillLessons[i],hymnStudy(...a),hymnStudy(...b),rec.lesson]};
+ const id='i'+(i+1),rec=recital(id,recitalTitle,pieces,criteria),alt=recital(id,...alternatives[i]);
+ alt.piece.id+='-alternative';
+ const choices=[rec.piece,alt.piece];INTERMEDIATE_HYMNS.push(...choices);
+ const recitalLesson=selectableRecital(rec.lesson,choices);
+ return {id,number:i+1,title,blurb,course:'intermediate',checklist:[...skillLessons[i].map(l=>l.summary),'Perform my chosen recital with its stated musical goals, a clear melody, steady pulse and comfortable movement.'],lessons:[...skillLessons[i],hymnStudy(...a),hymnStudy(...b),recitalLesson]};
 });
 
 // Keep the keyboard window focused on the notes actually used in each step.
 import { parseSeq, midiToName } from '../theory.js';
-for(const unit of INTERMEDIATE_UNITS)for(const lesson of unit.lessons)for(const step of lesson.steps)if(step.t==='play') {
+for(const unit of INTERMEDIATE_UNITS)for(const lesson of unit.lessons.flatMap(l=>l.recital?l.choices:[l]))for(const step of lesson.steps)if(step.t==='play') {
  const midis=[step.rh,step.lh].filter(Boolean).flatMap(seq=>parseSeq(seq).flatMap(e=>e.midis||[]));
  if(midis.length)step.range=[midiToName(Math.min(...midis)),midiToName(Math.max(...midis))];
 }

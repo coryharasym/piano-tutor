@@ -81,3 +81,13 @@ checklists, recording tasks and optional teacher/singer feedback address musical
 judgment. Creative introductions, alternative voicings, by-ear tasks, reharmonizing,
 rubato and improvised arrangements are practised outside the reference-score
 checker. The app does not claim to grade arbitrary creative alternatives.
+
+
+## Recital alternatives
+
+Every chapter now offers two choices. Alternative arrangements reuse only the
+verified source melodies/editions documented in this course and the existing
+course repertoire; no additional unverified edition or modern arrangement is
+introduced. Final programme alternatives preserve the course's programme length.
+Both choices have full reference scores in the songbook and explanations in the
+PDFs. The selection does not require completing both options.

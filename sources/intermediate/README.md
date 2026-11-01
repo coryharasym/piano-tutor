@@ -59,3 +59,13 @@ The standard lesson checks cover ranges, finger counts, bar lengths, aligned
 hands and syllable counts; browser checks exercise the shared VexFlow renderer,
 including triplets. These checks do not certify fingering, physical technique,
 real-device microphone accuracy, or the artistic quality of a performance.
+
+
+## Recital alternatives
+
+Every chapter now offers two choices. Alternative arrangements reuse only the
+verified source melodies/editions documented in this course and the existing
+course repertoire; no additional unverified edition or modern arrangement is
+introduced. Final programme alternatives preserve the course's programme length.
+Both choices have full reference scores in the songbook and explanations in the
+PDFs. The selection does not require completing both options.
