@@ -44,6 +44,18 @@ for (const rate of [44100,48000]) {
   checks++;
 }
 
+// A repeated C3 should count without total silence when the key has a new
+// attack above the existing sustain tail. A held C3 cannot pass twice.
+const repeatTracker=new NoteTracker();
+const c3Pitch={freq:hz(48),clarity:0.97};
+const repeated=[];
+for (const level of [...Array(10).fill(0.05),...Array(8).fill(0.028),...Array(8).fill(0.041)]) {
+  const midi=repeatTracker.push({level,pitch:c3Pitch});
+  if (midi!=null) repeated.push(midi);
+}
+assert.deepEqual(repeated,[48,48],'detect fresh repeated lower C during a soft tail');
+for (let i=0;i<12;i++) assert.equal(repeatTracker.push({level:0.041,pitch:c3Pitch}),null,'held key must not retrigger');
+
 // Every course shares Listener.chordHeard(). An uncalibrated microphone
 // must explicitly ask to learn both Cs, not pretend a bass C harmonic proves
 // that the player also pressed Middle C.
