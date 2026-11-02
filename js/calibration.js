@@ -25,6 +25,7 @@ export function calibrationCount() {
 // continue with missing keys, and re-recording is an explicit action.
 export function showCalibration(midis = C_POSITION, onDone = () => {}) {
   if (listener.calibrating) return;
+  const targeted = midis !== C_POSITION && midis.length <= 6;
   const wasActive = listener.active;
   listener.calibrating = true;
   listener.clearRecent();
@@ -34,9 +35,9 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
     <div class="sheet-head"><h2>Calibrate keyboard</h2><button class="icon-btn" data-close aria-label="Close">✕</button></div>
     <div data-intro><p>This setup is saved on this device and reused in every lesson.</p>
     <p>Keep your phone in its usual place. Use your usual piano sound with the sustain pedal off. When you start, leave the keys released while we measure room noise.</p>
-    <label class="row"><span>Keys to learn</span><select data-range><option value="basic" ${store.setting('calibrationRange') !== 'course' ? 'selected' : ''}>First steps (10 keys)</option><option value="course" ${store.setting('calibrationRange') === 'course' ? 'selected' : ''}>All course chord keys (${COURSE_KEYS.length} keys)</option></select></label></div>
+    <label class="row"><span>Keys to learn</span><select data-range><option value="basic" ${targeted || store.setting('calibrationRange') !== 'course' ? 'selected' : ''}>${targeted ? 'Only these notes (' + midis.length + ' keys)' : 'First steps (10 keys)'}</option><option value="course" ${!targeted && store.setting('calibrationRange') === 'course' ? 'selected' : ''}>All course chord keys (${COURSE_KEYS.length} keys)</option></select></label></div>
     <p class="calibration-note" data-note></p>
-    <p data-status role="status">${calibrationCount() ? `${calibrationCount()} keys already saved. Continue adds missing keys.` : 'Tap Start. The first key is Middle C.'}</p>
+    <p data-status role="status">${calibrationCount() ? `${calibrationCount()} keys already saved. Continue adds missing keys.` : 'Tap Start, then follow the note prompts.'}</p>
     <progress data-progress max="12" value="0" aria-label="Key sample captured"></progress>
     <p class="muted small">Completed keys are saved as you go. Re-record only if recognition worsens after changing the piano sound or moving the phone.</p>
     <div class="sheet-actions"><button class="pill" data-retry hidden>Retry this key</button><button class="pill" data-redo>Re-record selected keys</button><button class="btn primary" data-start>${calibrationCount() ? 'Continue' : 'Start'}</button></div>
@@ -111,7 +112,7 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
       draft = { version: PROFILE_VERSION, fftSize: PROFILE_FFT, sampleRate: rate, tuning: listener.tuning,
         notes: profileCompatible(old, rate, listener.tuning) ? { ...old.notes } : {} };
       const range = $('[data-range]').value === 'course' ? 'course' : 'basic';
-      store.setting('calibrationRange', range);
+      if (!targeted) store.setting('calibrationRange', range);
       const selected = range === 'course' ? COURSE_KEYS : midis;
       notes = [...new Set(selected)].filter(m => redo || typeof draft.notes[m] !== 'string' || draft.notes[m].length !== 5464);
       button.hidden = true; $('[data-redo]').hidden = true; $('[data-intro]').hidden = true;

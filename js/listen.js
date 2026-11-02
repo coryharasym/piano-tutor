@@ -1,6 +1,6 @@
 // Microphone listening: turns what the phone hears into "note played" events.
 
-import { detectPitch, rms, spectrumHasNotes, NoteTracker } from './pitch.js';
+import { detectPianoPitch, rms, spectrumHasNotes, NoteTracker } from './pitch.js';
 import { piano } from './audio.js';
 import { buildChordModel, profileCompatible } from './chord-profile.js';
 
@@ -50,7 +50,7 @@ export class Listener {
     this.analyser.fftSize = 8192;
     this.analyser.smoothingTimeConstant = 0;
     src.connect(this.analyser);
-    this.time = new Float32Array(2048);
+    this.time = new Float32Array(4096);
     this.freq = new Float32Array(this.analyser.frequencyBinCount);
     this.clearRecent();
     this.tracker = new NoteTracker();
@@ -80,19 +80,20 @@ export class Listener {
     // the extra work does not overload a phone while learning each key.
     if (this.calibrating && now - (this.lastCalibrationTick || 0) < 45) return;
     if (this.calibrating) this.lastCalibrationTick = now;
-    const time = this.calibrating ? (this.calibrationTime ||= new Float32Array(4096)) : this.time;
+    const time = this.time; // The same long window serves normal lessons and calibration.
     a.getFloatTimeDomainData(time);
     const level = rms(time);
     this.history.push({ t: now, level });
     while (this.history.length && now - this.history[0].t > 3000) this.history.shift();
     const gate = Math.max(0.003, this.tracker.noiseFloor * 3.5);
-    if (level < gate || (level > this.tracker.prevLevel * 1.6 && level - this.tracker.prevLevel > gate * 0.5)) this.consumedChord = null;
+    if (level < gate || (now - (this.chordConsumedAt ?? -Infinity) > 180 &&
+        level > this.tracker.prevLevel * 1.35 && level - this.tracker.prevLevel > gate * 0.5)) this.consumedChord = null;
     this.onLevel.forEach((fn) => fn(level));
     if (performance.now() < this.muteUntil) {
       this.tracker.push({ level: 0, pitch: null });
       return;
     }
-    const raw = level > 0.003 ? detectPitch(time, a.context.sampleRate, { maxFreq: 2400 }) : null;
+    const raw = level > 0.003 ? detectPianoPitch(time, a.context.sampleRate, { maxFreq: 2400 }) : null;
     if (raw && raw.clarity > 0.9) this.onRaw.forEach((fn) => fn(69 + 12 * Math.log2(raw.freq / 440), level));
     const pitch = raw && { ...raw, freq: raw.freq * 2 ** (-this.tuning / 12) };
     if (this.onSpectrum.size) {
@@ -128,7 +129,7 @@ export class Listener {
       this.modelKey = modelKey;
       this.chordModel = calibrated ? buildChordModel(this.calibration, midis) : null;
     }
-    const octavePair = midis.some((m, i) => midis.some((n, j) => j !== i && n !== m && (n - m) % 12 === 0));
+    const octavePair = this.hasOctavePair(midis);
     if (!this.chordModel && !octavePair && allowRecent && midis.length && midis.every(m => seen.has(m))) return true;
     this.analyser.getFloatFrequencyData(this.freq);
     const audible = rms(this.time) > Math.max(0.003, this.tracker.noiseFloor * 3.5);
@@ -138,8 +139,24 @@ export class Listener {
     return this.chordFrames >= 2;
   }
 
+  // A single microphone spectrum cannot reliably distinguish an upper note
+  // from the identical overtone of a lower note. For octave chords, recorded
+  // single-key fingerprints are needed to avoid false positives.
+  hasOctavePair(midis) {
+    return midis.some((m, i) => midis.some((n, j) => j !== i && n !== m && (n - m) % 12 === 0));
+  }
+
+  needsChordCalibration(midis) {
+    if (!this.hasOctavePair(midis) || !this.analyser) return this.hasOctavePair(midis);
+    if (!profileCompatible(this.calibration, this.analyser.context.sampleRate, this.tuning)) return true;
+    return midis.some(m => typeof this.calibration.notes?.[m] !== 'string' || this.calibration.notes[m].length !== 5464);
+  }
+
   clearRecent() {
-    if (this.chordFrames >= 2) this.consumedChord = this.chordKey;
+    if (this.chordFrames >= 2) {
+      this.consumedChord = this.chordKey;
+      this.chordConsumedAt = performance.now();
+    }
     this.recent = []; this.chordFrames = 0; this.chordKey = '';
   }
 

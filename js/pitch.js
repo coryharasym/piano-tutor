@@ -50,6 +50,20 @@ export function detectPitch(buf, sampleRate, { minFreq = 55, maxFreq = 2100 } = 
   return { freq, clarity: b };
 }
 
+// A longer 85-93 ms recording makes low piano notes easier to identify.
+// Downsample by averaging groups of four before the expensive pitch search:
+// this retains the piano's fundamentals while keeping iPhone CPU use low.
+export function detectPianoPitch(buf, sampleRate, options = {}) {
+  const factor = 4;
+  const count = Math.floor(buf.length / factor);
+  const reduced = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const j = i * factor;
+    reduced[i] = (buf[j] + buf[j + 1] + buf[j + 2] + buf[j + 3]) * 0.25;
+  }
+  return detectPitch(reduced, sampleRate / factor, options);
+}
+
 export function rms(buf) {
   let s = 0;
   for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
@@ -77,7 +91,7 @@ export function chroma(dbSpectrum, sampleRate, fftSize, { lo = 60, hi = 2000 } =
  * notes like E-E-F-G register as separate presses.
  */
 export class NoteTracker {
-  constructor({ stableFrames = 3, minClarity = 0.86 } = {}) {
+  constructor({ stableFrames = 3, minClarity = 0.8 } = {}) {
     this.stableFrames = stableFrames;
     this.minClarity = minClarity;
     this.noiseFloor = 0.002;
@@ -86,17 +100,23 @@ export class NoteTracker {
     this.count = 0;
     this.lastEmitted = null;
     this.armed = true;
+    this.framesSinceEmit = Infinity;
   }
 
   // reading: { level, pitch: {freq, clarity} | null }. Returns midi or null.
   push({ level, pitch }) {
+    if (Number.isFinite(this.framesSinceEmit)) this.framesSinceEmit++;
     // Slowly track the background noise level.
     if (level < this.noiseFloor * 2) this.noiseFloor = this.noiseFloor * 0.95 + level * 0.05;
     else this.noiseFloor *= 1.0005;
     this.noiseFloor = Math.max(0.0008, Math.min(this.noiseFloor, 0.05));
 
     const gate = this.noiseFloor * 3.5;
-    const attack = level > gate && level > this.prevLevel * 1.6 && level - this.prevLevel > gate * 0.5;
+    // A repeated piano key can be struck before the preceding note is silent.
+    // Require a fresh amplitude rise, plus an inter-onset cooldown; an
+    // unchanging held key must never score itself a second time.
+    const attack = this.framesSinceEmit >= 5 && level > gate &&
+      level > this.prevLevel * 1.35 && level - this.prevLevel > gate * 0.5;
     this.prevLevel = this.prevLevel * 0.6 + level * 0.4;
 
     if (level < gate) {
@@ -104,6 +124,7 @@ export class NoteTracker {
       this.lastEmitted = null;
       this.candidate = null;
       this.count = 0;
+      this.framesSinceEmit = Infinity;
       return null;
     }
     if (attack) {
@@ -122,6 +143,7 @@ export class NoteTracker {
     if (this.count >= needed && (this.armed || midi !== this.lastEmitted)) {
       this.armed = false;
       this.lastEmitted = midi;
+      this.framesSinceEmit = 0;
       return midi;
     }
     return null;
