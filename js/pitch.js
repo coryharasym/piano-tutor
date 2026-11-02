@@ -50,6 +50,20 @@ export function detectPitch(buf, sampleRate, { minFreq = 55, maxFreq = 2100 } = 
   return { freq, clarity: b };
 }
 
+// A longer 85-93 ms recording makes low piano notes easier to identify.
+// Downsample by averaging groups of four before the expensive pitch search:
+// this retains the piano's fundamentals while keeping iPhone CPU use low.
+export function detectPianoPitch(buf, sampleRate, options = {}) {
+  const factor = 4;
+  const count = Math.floor(buf.length / factor);
+  const reduced = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const j = i * factor;
+    reduced[i] = (buf[j] + buf[j + 1] + buf[j + 2] + buf[j + 3]) * 0.25;
+  }
+  return detectPitch(reduced, sampleRate / factor, options);
+}
+
 export function rms(buf) {
   let s = 0;
   for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
@@ -77,7 +91,7 @@ export function chroma(dbSpectrum, sampleRate, fftSize, { lo = 60, hi = 2000 } =
  * notes like E-E-F-G register as separate presses.
  */
 export class NoteTracker {
-  constructor({ stableFrames = 3, minClarity = 0.86 } = {}) {
+  constructor({ stableFrames = 3, minClarity = 0.8 } = {}) {
     this.stableFrames = stableFrames;
     this.minClarity = minClarity;
     this.noiseFloor = 0.002;
