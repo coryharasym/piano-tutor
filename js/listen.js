@@ -1,8 +1,9 @@
 // Microphone listening: turns what the phone hears into "note played" events.
 
-import { detectPianoPitch, rms, spectrumHasNotes, NoteTracker } from './pitch.js';
+import { detectPianoPitch, rms, spectrumNoteEvidence, NoteTracker } from './pitch.js';
 import { piano } from './audio.js';
 import { buildChordModel, profileCompatible } from './chord-profile.js';
+import { ChordTracker } from './chord-tracker.js';
 
 export class Listener {
   constructor() {
@@ -13,7 +14,8 @@ export class Listener {
     this.onNote = new Set();
     this.onLevel = new Set();
     this.muteUntil = 0;
-    this.recent = []; // [{midi, t}] for arpeggiated chord checks
+    this.chords = new ChordTracker();
+    this.chordStatus = { detected: [], audible: false };
     this.timer = null;
     this.tuning = 0; // semitones the player's piano (or this phone) sounds sharp
     this.onRaw = new Set(); // unrounded, untuned pitch readings, for tuning
@@ -103,25 +105,26 @@ export class Listener {
     }
     const midi = this.tracker.push({ level, pitch });
     if (midi != null && !this.calibrating) {
-      const now = performance.now();
-      this.recent = this.recent.filter((r) => now - r.t < 2500);
-      this.recent.push({ midi, t: now });
       this.onNote.forEach((fn) => fn(midi, 'mic'));
     }
   }
 
-  // Stable, current spectrum evidence; rolled-note fallback is scoped to
-  // the current exercise moment and disabled for timed Flow scoring.
-  chordHeard(midis, { allowRecent = true } = {}) {
+  // Track each expected key independently. Wait practice tolerates a brief
+  // masked partial; timed Flow still requires two complete current frames.
+  chordHeard(midis, { strict = false } = {}) {
     const now = performance.now();
     if (!this.active || this.calibrating || now < this.muteUntil) {
       this.chordFrames = 0;
+      this.chords.reset();
+      this.chordStatus = { detected: [], audible: false };
       return false;
     }
     const key = [...new Set(midis)].sort((a, b) => a - b).join(',');
-    if (key === this.consumedChord) return false;
+    if (key === this.consumedChord) {
+      this.chordStatus = { detected: [], audible: true, needsAttack: true };
+      return false;
+    }
     if (key !== this.chordKey) { this.chordKey = key; this.chordFrames = 0; }
-    const seen = new Set(this.recent.filter(r => now - r.t < 2500).map(r => r.midi));
     const calibrated = profileCompatible(this.calibration, this.analyser.context.sampleRate, this.tuning);
     const modelKey = `${key}:${calibrated}`;
     if (this.modelProfile !== this.calibration || this.modelKey !== modelKey) {
@@ -130,13 +133,19 @@ export class Listener {
       this.chordModel = calibrated ? buildChordModel(this.calibration, midis) : null;
     }
     const octavePair = this.hasOctavePair(midis);
-    if (!this.chordModel && !octavePair && allowRecent && midis.length && midis.every(m => seen.has(m))) return true;
     this.analyser.getFloatFrequencyData(this.freq);
     const audible = rms(this.time) > Math.max(0.003, this.tracker.noiseFloor * 3.5);
-    const heard = audible && (this.chordModel ? this.chordModel(this.freq)
-      : spectrumHasNotes(this.freq, this.rate, this.analyser.fftSize, midis));
-    this.chordFrames = heard ? (this.chordFrames || 0) + 1 : 0;
-    return this.chordFrames >= 2;
+    const evidence = audible ? spectrumNoteEvidence(this.freq, this.rate, this.analyser.fftSize, midis) : [];
+    const modelHeard = audible && this.chordModel?.(this.freq);
+    // A complete calibration remains the authority when available, and
+    // octaves always need it. Per-note partials still explain what is audible
+    // when the stricter model cannot confirm every played key.
+    const detected = modelHeard ? [...new Set(midis)] : evidence;
+    const complete = !!modelHeard || (!this.chordModel && !octavePair && detected.length === new Set(midis).size && midis.length > 0);
+    const heard = this.chords.push(midis, detected, { now, audible, complete, strict, requireComplete: octavePair || !!this.chordModel });
+    this.chordStatus = { detected: this.chords.detected, audible };
+    this.chordFrames = heard ? 2 : 0;
+    return heard;
   }
 
   // A single microphone spectrum cannot reliably distinguish an upper note
@@ -157,7 +166,9 @@ export class Listener {
       this.consumedChord = this.chordKey;
       this.chordConsumedAt = performance.now();
     }
-    this.recent = []; this.chordFrames = 0; this.chordKey = '';
+    this.chordFrames = 0; this.chordKey = '';
+    this.chords.reset();
+    this.chordStatus = { detected: [], audible: false };
   }
 
   // How loud a note heard at time t was at its start, and how much of that

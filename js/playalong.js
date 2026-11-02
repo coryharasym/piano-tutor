@@ -9,6 +9,7 @@ import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
+import { ChordCoach } from './chord-coach.js';
 
 const LOOKAHEAD = 4;        // beats visible above the keyboard
 const WINDOW = 0.38;        // seconds either side of a note that still count as "on time"
@@ -57,7 +58,10 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
       <button class="pill" data-pause>Pause</button>
       <small>Written bars; pickup counts as bar 1. Loops replace repeat signs; held notes restart at the boundary.</small>
     </div>
-    <div class="mic-chord-help" hidden><span>Octave notes need a quick, one-time microphone calibration.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
+    <div class="mic-input-info">
+      <div class="mic-chord-help" hidden><span>Octave notes need a quick, one-time microphone calibration.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
+      <div class="chord-coach" hidden></div>
+    </div>
     <section class="fall-wrap">
       <canvas class="fall"></canvas>
       <div class="fall-hud"><span class="count"></span><span class="score"></span></div>
@@ -74,6 +78,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   const hudCount = el.querySelector('.count');
   const hudScore = el.querySelector('.score');
   const chordHelp = el.querySelector('.mic-chord-help');
+  const chordCoach = new ChordCoach(el.querySelector('.chord-coach'), { levelSource: listener, onChange: () => listener.clearRecent() });
   let calibrationKeys = [];
   el.querySelector('[data-chord-calibrate]').addEventListener('click', () => {
     if (calibrationKeys.length > 1) onCalibrate(calibrationKeys);
@@ -82,7 +87,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   const kb = new Keyboard(el.querySelector('.kb-wrap'), { lo: range[0], hi: range[1], labels: 'c', onPress: (m) => input(m, 'tap') });
 
   // ---- state
-  let beat, running, finished, wrong, lastFrame, raf, nextMoment;
+  let beat, running, finished, wrong, lastFrame, raf, nextMoment, assistedChords;
   const bps = () => ((step.tempo || 80) * prefs.speed) / 60;
 
   function reset(nextPass = false) {
@@ -99,12 +104,14 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     beat = -pulse.bar;
     nextMoment = 0;
     wrong = 0;
+    assistedChords = 0;
     finished = false;
     running = true;
     lastFrame = performance.now();
     msg.className = 'fall-msg';
     msg.innerHTML = '';
     listener.clearRecent();
+    chordCoach.reset();
     chordHelp.hidden = true;
     paintSeg();
   }
@@ -128,7 +135,13 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
         .filter(m => m.distance <= WINDOW * bps())
         .sort((a, b) => a.distance - b.distance)[0]?.i;
       if (items.filter(it => it.moment === target && !it.auto).length > 1) {
-        kb.flash(midi, 'press'); return;
+        kb.flash(midi, 'press');
+        if (prefs.mode === 'wait' && chordCoach.takeNote(midi)) {
+          assistedChords++;
+          items.filter(it => it.moment === target && !it.auto).forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
+          nextMoment++; listener.clearRecent(); chordCoach.reset();
+        }
+        return;
       }
     }
     let hit = null;
@@ -158,7 +171,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   // Both modes use the same simultaneous-note check. Flow only considers
   // the closest eligible moment and never uses the rolled-note history.
   const chordTimer = setInterval(() => {
-    if (!running || finished || !listener.active || beat < 0) { chordHelp.hidden = true; return; }
+    if (!running || finished || !listener.active || listener.calibrating || performance.now() < listener.muteUntil || beat < 0) { chordHelp.hidden = true; chordCoach.reset(); return; }
     const now = beat - MIC_LATENCY * bps();
     const candidates = prefs.mode === 'wait' ? [nextMoment] : moments
       .map((m, i) => ({ i, distance: Math.abs(m.beat - now) }))
@@ -168,10 +181,16 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     const want = items.filter(it => it.moment === target && !it.auto);
     calibrationKeys = [...new Set(want.map(it => it.midi))];
     chordHelp.hidden = want.length < 2 || !listener.needsChordCalibration?.(calibrationKeys);
-    if (want.length > 1 && want.some(it => it.state === 'pending') && listener.chordHeard(want.map(it => it.midi), { allowRecent: prefs.mode === 'wait' })) {
+    const eligible = want.length > 1 && want.some(it => it.state === 'pending');
+    if (!eligible) { chordCoach.reset(); return; }
+    if (chordCoach.assisted) { chordCoach.update(calibrationKeys, {}, { canAssist: prefs.mode === 'wait' }); return; }
+    const heardChord = listener.chordHeard(calibrationKeys, { strict: prefs.mode === 'flow' });
+    chordCoach.update(calibrationKeys, listener.chordStatus, { canAssist: prefs.mode === 'wait' });
+    if (heardChord) {
       want.filter(it => it.state === 'pending').forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
       if (prefs.mode === 'wait') nextMoment++;
       listener.clearRecent();
+      chordCoach.reset();
     }
   }, 80);
 
@@ -237,10 +256,10 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     const pct = Math.round((hits / total) * 100);
     const line = prefs.mode === 'flow'
       ? `<b>${hits} of ${total}</b> notes on time (${pct}%)`
-      : `<b>All ${total} notes</b> played${wrong ? `, with ${wrong} wrong note${wrong > 1 ? 's' : ''} along the way` : ' with no wrong notes'}`;
+      : `<b>All ${total} notes</b> played${assistedChords ? `, with separate-note assistance on ${assistedChords} chord${assistedChords > 1 ? 's' : ''}` : wrong ? `, with ${wrong} wrong note${wrong > 1 ? 's' : ''} along the way` : ' with no wrong notes'}`;
     const praise = prefs.mode === 'flow'
       ? (pct >= 90 ? 'Superb!' : pct >= 70 ? 'Nice playing!' : 'Good start!')
-      : (wrong === 0 ? 'Perfect!' : 'Well done!');
+      : (assistedChords ? 'Practice complete' : wrong === 0 ? 'Perfect!' : 'Well done!');
     msg.className = 'fall-msg show';
     msg.innerHTML = `<div class="card"><h2>${praise}</h2><p>${line}.</p>
       ${prefs.mode === 'wait' ? '<p class="muted small">Ready for more? Try Flow mode, where the music keeps moving.</p>' : pct >= 90 && prefs.speed < 1.5 ? '<p class="muted small">Try it a little faster next time.</p>' : ''}
@@ -379,6 +398,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     cancelAnimationFrame(raf);
     clearInterval(chordTimer);
     listener.onNote.delete(onNote);
+    chordCoach.dispose();
   };
 }
 

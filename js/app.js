@@ -17,6 +17,7 @@ import { mountPrint, printOne, songbook } from './print.js';
 import { mountSheet } from './sheet.js';
 import { mountNotes } from './notes.js';
 import { showCalibration, calibrationCount } from './calibration.js';
+import { ChordCoach } from './chord-coach.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -646,6 +647,7 @@ function renderPlay(step, ctx) {
     ${practice.lyrics && store.setting('lyrics') ? '<p class="lyric-line"></p>' : ''}
     <div class="feedback" aria-live="polite"></div>
     <div class="mic-chord-help" hidden><span>Notes an octave apart need a quick, one-time microphone calibration to distinguish both keys from their overtones.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
+    <div class="chord-coach" hidden></div>
   </div>`);
   ctx.stage.appendChild(el);
   const kbWrap = h('<div class="kb-wrap"></div>');
@@ -655,6 +657,8 @@ function renderPlay(step, ctx) {
   const music = $('.music', el);
   const feedback = $('.feedback', el);
   const chordHelp = $('.mic-chord-help', el);
+  const chordCoach = new ChordCoach($('.chord-coach', el), { levelSource: listener, onChange: () => listener.clearRecent() });
+  disposers.push(() => chordCoach.dispose());
 
   let rep = 0, mi = 0;
   let satisfied = new Set(); // indexes into moment.items
@@ -666,6 +670,7 @@ function renderPlay(step, ctx) {
   let startedAt = null; // timed drills: when the first note was played
   let showTargets = step.hint !== false;
   let finished = false;
+  let assistedChords = 0;
 
   const kb = new Keyboard(kbWrap, { lo: range[0], hi: range[1], labels, onPress: (m) => input(m, 'tap') });
 
@@ -744,7 +749,9 @@ function renderPlay(step, ctx) {
 
   function reset() {
     mi = 0; satisfied = new Set(); finished = false; heard = []; startedAt = null;
+    assistedChords = 0;
     listener.clearRecent();
+    chordCoach.reset();
     feedback.textContent = '';
     music.innerHTML = '';
     drawMusic(); paintTargets(); paintReps();
@@ -765,6 +772,12 @@ function renderPlay(step, ctx) {
     // Score microphone chords atomically through chordHeard instead.
     if (source === 'mic' && m.items.length > 1 && !step.anyOrder) {
       kb.flash(midi, 'press');
+      if (chordCoach.takeNote(midi)) {
+        assistedChords++;
+        m.items.forEach(it => kb.flash(it.midi, 'good'));
+        if (step.timed && startedAt == null) startedAt = performance.now();
+        advance();
+      }
       return;
     }
     const anyOctave = store.setting('anyOctave');
@@ -790,6 +803,7 @@ function renderPlay(step, ctx) {
 
   function advance() {
     listener.clearRecent();
+    chordCoach.reset();
     mi++;
     satisfied = new Set();
     if (step.hint === false) showTargets = false;
@@ -813,11 +827,13 @@ function renderPlay(step, ctx) {
 
   function complete() {
     finished = true;
+    chordCoach.reset();
     piano.chime();
-    if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
+    if (assistedChords) feedback.innerHTML = `<span class="ok"><b>Practice complete</b>, with separate-note assistance. Tap ${icons.next} to continue.</span>`;
+    else if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
     else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue.</span>`;
     paintChordHelp();
-    if (step.timed && startedAt != null) {
+    if (step.timed && startedAt != null && !assistedChords) {
       const secs = Math.round((performance.now() - startedAt) / 100) / 10;
       const best = store.data.best?.[step.timed];
       const record = !best || secs < best;
@@ -849,11 +865,16 @@ function renderPlay(step, ctx) {
   // Chords: the mic can rarely pick out every note, so also check the spectrum.
   const chordTimer = setInterval(() => {
     paintChordHelp();
-    if (finished || pause || !listener.active) return;
     const m = moments[mi];
-    if (!m || m.items.length < 2 || step.anyOrder) return;
+    const active = !finished && !pause && listener.active && !listener.calibrating && performance.now() >= listener.muteUntil;
+    if (!active || !m || m.items.length < 2 || step.anyOrder) {
+      chordCoach.update([], {}, { active: false }); return;
+    }
     const midis = m.items.map((it) => it.midi);
-    if (listener.chordHeard(midis)) {
+    if (chordCoach.assisted) { chordCoach.update(midis); return; }
+    const heardChord = listener.chordHeard(midis);
+    chordCoach.update(midis, listener.chordStatus, { revealTargets: showTargets });
+    if (heardChord) {
       if (step.timed && startedAt == null) startedAt = performance.now();
       if (expressive) m.items.forEach(item => heard.push({ t: performance.now(), item, dyn: dynAt[mi] }));
       m.items.forEach((it) => kb.flash(it.midi, 'good'));
