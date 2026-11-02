@@ -16,7 +16,7 @@ const MIC_LATENCY = 0.12;   // the mic hears a note a little after it's played
 
 export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'], [1.5, '1½×']];
 
-export function mountPlayAlong(root, step, { micButton, onExit }) {
+export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = () => {} }) {
   let { moments, lyrics, totalBeats } = buildPractice(step);
   const pulse=meterPulse(step.time||'4/4');
   const bars = loopBars(step).bars;
@@ -57,6 +57,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       <button class="pill" data-pause>Pause</button>
       <small>Written bars; pickup counts as bar 1. Loops replace repeat signs; held notes restart at the boundary.</small>
     </div>
+    <div class="mic-chord-help" hidden><span>Octave notes need a quick, one-time microphone calibration.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
     <section class="fall-wrap">
       <canvas class="fall"></canvas>
       <div class="fall-hud"><span class="count"></span><span class="score"></span></div>
@@ -72,6 +73,11 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   const msg = el.querySelector('.fall-msg');
   const hudCount = el.querySelector('.count');
   const hudScore = el.querySelector('.score');
+  const chordHelp = el.querySelector('.mic-chord-help');
+  let calibrationKeys = [];
+  el.querySelector('[data-chord-calibrate]').addEventListener('click', () => {
+    if (calibrationKeys.length > 1) onCalibrate(calibrationKeys);
+  });
   const range = step.range ? step.range.map(toMidi) : [toMidi('C3'), toMidi('C5')];
   const kb = new Keyboard(el.querySelector('.kb-wrap'), { lo: range[0], hi: range[1], labels: 'c', onPress: (m) => input(m, 'tap') });
 
@@ -99,6 +105,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
     msg.className = 'fall-msg';
     msg.innerHTML = '';
     listener.clearRecent();
+    chordHelp.hidden = true;
     paintSeg();
   }
 
@@ -151,7 +158,7 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
   // Both modes use the same simultaneous-note check. Flow only considers
   // the closest eligible moment and never uses the rolled-note history.
   const chordTimer = setInterval(() => {
-    if (!running || finished || !listener.active || beat < 0) return;
+    if (!running || finished || !listener.active || beat < 0) { chordHelp.hidden = true; return; }
     const now = beat - MIC_LATENCY * bps();
     const candidates = prefs.mode === 'wait' ? [nextMoment] : moments
       .map((m, i) => ({ i, distance: Math.abs(m.beat - now) }))
@@ -159,6 +166,8 @@ export function mountPlayAlong(root, step, { micButton, onExit }) {
       .sort((a, b) => a.distance - b.distance).map(m => m.i).slice(0, 1);
     const target = candidates[0];
     const want = items.filter(it => it.moment === target && !it.auto);
+    calibrationKeys = [...new Set(want.map(it => it.midi))];
+    chordHelp.hidden = want.length < 2 || !listener.needsChordCalibration?.(calibrationKeys);
     if (want.length > 1 && want.some(it => it.state === 'pending') && listener.chordHeard(want.map(it => it.midi), { allowRecent: prefs.mode === 'wait' })) {
       want.filter(it => it.state === 'pending').forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
       if (prefs.mode === 'wait') nextMoment++;
