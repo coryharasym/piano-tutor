@@ -100,17 +100,23 @@ export class NoteTracker {
     this.count = 0;
     this.lastEmitted = null;
     this.armed = true;
+    this.framesSinceEmit = Infinity;
   }
 
   // reading: { level, pitch: {freq, clarity} | null }. Returns midi or null.
   push({ level, pitch }) {
+    if (Number.isFinite(this.framesSinceEmit)) this.framesSinceEmit++;
     // Slowly track the background noise level.
     if (level < this.noiseFloor * 2) this.noiseFloor = this.noiseFloor * 0.95 + level * 0.05;
     else this.noiseFloor *= 1.0005;
     this.noiseFloor = Math.max(0.0008, Math.min(this.noiseFloor, 0.05));
 
     const gate = this.noiseFloor * 3.5;
-    const attack = level > gate && level > this.prevLevel * 1.6 && level - this.prevLevel > gate * 0.5;
+    // A repeated piano key can be struck before the preceding note is silent.
+    // Require a fresh amplitude rise, plus an inter-onset cooldown; an
+    // unchanging held key must never score itself a second time.
+    const attack = this.framesSinceEmit >= 5 && level > gate &&
+      level > this.prevLevel * 1.35 && level - this.prevLevel > gate * 0.5;
     this.prevLevel = this.prevLevel * 0.6 + level * 0.4;
 
     if (level < gate) {
@@ -118,6 +124,7 @@ export class NoteTracker {
       this.lastEmitted = null;
       this.candidate = null;
       this.count = 0;
+      this.framesSinceEmit = Infinity;
       return null;
     }
     if (attack) {
@@ -136,6 +143,7 @@ export class NoteTracker {
     if (this.count >= needed && (this.armed || midi !== this.lastEmitted)) {
       this.armed = false;
       this.lastEmitted = midi;
+      this.framesSinceEmit = 0;
       return midi;
     }
     return null;
