@@ -148,7 +148,7 @@ export class Listener {
   needsChordCalibration(midis) {
     if (!this.hasOctavePair(midis) || !this.analyser) return this.hasOctavePair(midis);
     if (!profileCompatible(this.calibration, this.analyser.context.sampleRate, this.tuning)) return true;
-    return !buildChordModel(this.calibration, midis);
+    return midis.some(m => typeof this.calibration.notes?.[m] !== 'string' || this.calibration.notes[m].length !== 5464);
   }
 
   clearRecent() {
