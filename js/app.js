@@ -645,6 +645,7 @@ function renderPlay(step, ctx) {
     <div class="music"></div>
     ${practice.lyrics && store.setting('lyrics') ? '<p class="lyric-line"></p>' : ''}
     <div class="feedback" aria-live="polite"></div>
+    <div class="mic-chord-help" hidden><span>Notes an octave apart need a quick, one-time microphone calibration to distinguish both keys from their overtones.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
   </div>`);
   ctx.stage.appendChild(el);
   const kbWrap = h('<div class="kb-wrap"></div>');
@@ -653,6 +654,7 @@ function renderPlay(step, ctx) {
   const range = step.range ? step.range.map(toMidi) : [toMidi('C3'), toMidi('C5')];
   const music = $('.music', el);
   const feedback = $('.feedback', el);
+  const chordHelp = $('.mic-chord-help', el);
 
   let rep = 0, mi = 0;
   let satisfied = new Set(); // indexes into moment.items
@@ -717,7 +719,18 @@ function renderPlay(step, ctx) {
     if (now) now.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }
 
+  function paintChordHelp() {
+    const midis = moments[mi]?.items.map(it => it.midi) || [];
+    chordHelp.hidden = !listener.active || !listener.needsChordCalibration(midis) || finished || pause;
+  }
+
+  $('[data-chord-calibrate]', el).addEventListener('click', () => {
+    const midis = [...new Set(moments[mi]?.items.map(it => it.midi) || [])];
+    if (midis.length > 1) showCalibration(midis, paintChordHelp);
+  });
+
   function paintTargets() {
+    paintChordHelp();
     if (finished || step.anyNote) { kb.setTargets([]); return; }
     const m = moments[mi];
     if (!m || !showTargets) { kb.setTargets([]); return; }
@@ -803,6 +816,7 @@ function renderPlay(step, ctx) {
     piano.chime();
     if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
     else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue.</span>`;
+    paintChordHelp();
     if (step.timed && startedAt != null) {
       const secs = Math.round((performance.now() - startedAt) / 100) / 10;
       const best = store.data.best?.[step.timed];
@@ -834,6 +848,7 @@ function renderPlay(step, ctx) {
   listener.onNote.add(onNote);
   // Chords: the mic can rarely pick out every note, so also check the spectrum.
   const chordTimer = setInterval(() => {
+    paintChordHelp();
     if (finished || pause || !listener.active) return;
     const m = moments[mi];
     if (!m || m.items.length < 2 || step.anyOrder) return;
