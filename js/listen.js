@@ -86,7 +86,8 @@ export class Listener {
     this.history.push({ t: now, level });
     while (this.history.length && now - this.history[0].t > 3000) this.history.shift();
     const gate = Math.max(0.003, this.tracker.noiseFloor * 3.5);
-    if (level < gate || (level > this.tracker.prevLevel * 1.6 && level - this.tracker.prevLevel > gate * 0.5)) this.consumedChord = null;
+    if (level < gate || (now - (this.chordConsumedAt ?? -Infinity) > 180 &&
+        level > this.tracker.prevLevel * 1.35 && level - this.tracker.prevLevel > gate * 0.5)) this.consumedChord = null;
     this.onLevel.forEach((fn) => fn(level));
     if (performance.now() < this.muteUntil) {
       this.tracker.push({ level: 0, pitch: null });
@@ -152,7 +153,10 @@ export class Listener {
   }
 
   clearRecent() {
-    if (this.chordFrames >= 2) this.consumedChord = this.chordKey;
+    if (this.chordFrames >= 2) {
+      this.consumedChord = this.chordKey;
+      this.chordConsumedAt = performance.now();
+    }
     this.recent = []; this.chordFrames = 0; this.chordKey = '';
   }
 
