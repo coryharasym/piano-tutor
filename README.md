@@ -6,7 +6,7 @@ A mobile-friendly web app that teaches classical piano from the very beginning. 
 
 - **Three courses:** seven beginner chapters, eight intermediate chapters and eight advanced chapters. Intermediate and Advanced each add 64 hymn-focused lessons.
 - **Read, look, play:** each lesson mixes short explanations, illustrations, quizzes and practice.
-- **Listens to you play:** pitch detection on the phone's microphone, tuned for piano. Repeated notes and chords work too. You can always tap the on-screen keys instead.
+- **Listens to you play:** pitch detection on the phone's microphone, tuned for piano. Chord feedback shows which expected notes are audible. Lessons and Wait mode offer **Play notes separately** after five seconds if recognition stalls; this is labelled assisted practice and requires releasing between keys. Flow keeps simultaneous timing checks. Octave pairs still use saved key calibration. You can always tap the on-screen keys instead.
 - **Real piano sound:** sampled grand piano for every key, demo playback ("Listen") and a count-in for rhythm.
 - **Sheet music:** treble, bass and grand staff, drawn with VexFlow, with the current note highlighted.
 - **Progress saved on your device,** keeps the screen awake during lessons, and works offline after the first visit.

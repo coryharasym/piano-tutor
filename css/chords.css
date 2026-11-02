@@ -1,0 +1,9 @@
+/* Live microphone feedback; excluded from chapter-note print layouts. */
+.playalong { grid-template-rows:auto auto auto minmax(0,1fr) auto; }
+.playalong:has(.lyric-line) { grid-template-rows:auto auto auto minmax(0,1fr) auto auto; }
+.playalong:has(.lyric-line[hidden]) { grid-template-rows:auto auto auto minmax(0,1fr) auto; }
+.chord-coach { display:flex; align-items:center; justify-content:center; gap:6px 12px; flex-wrap:wrap; padding:4px 10px; font-size:.8rem; color:var(--ink-soft); }
+.chord-coach[hidden], .chord-coach button[hidden], .mic-chord-help[hidden] { display:none; }
+.chord-coach .pill, .mic-chord-help .pill { min-height:32px; height:auto; padding:5px 10px; font-size:.8rem; }
+.mic-chord-help { padding:4px 10px; font-size:.8rem; text-align:center; }
+@media(max-height:450px) { .chord-coach { gap:4px 8px; padding:2px 8px; font-size:.74rem; } .chord-coach .pill, .mic-chord-help .pill { min-height:28px; padding:3px 8px; } }
