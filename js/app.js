@@ -391,7 +391,7 @@ function showPlayAlong(id, stepIndex) {
   keepAwake(true);
   const step = findLesson(id).lesson.steps[stepIndex];
   if (!step || step.t !== 'play') return go(`#/lesson/${id}/${stepIndex}`);
-  disposers.push(mountPlayAlong(app, sung(step), { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`) }));
+  disposers.push(mountPlayAlong(app, sung(step), { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`), onCalibrate: midis => showCalibration(midis) }));
 }
 
 // ---------------------------------------------------------------- printing
