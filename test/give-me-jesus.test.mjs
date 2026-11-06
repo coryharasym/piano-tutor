@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {GIVE_ME_JESUS,GIVE_ME_JESUS_MELODY} from '../js/lessons/give-me-jesus.js';
 import {UNITS,HYMNS,findLesson} from '../js/lessons/index.js';
-import {songbook,printOne} from '../js/print.js';
+import {songbook,printOne,songTitle} from '../js/print.js';
 import {parseSeq} from '../js/theory.js';
 import {buildPractice,loopBars,buildBarLoop} from '../js/practice.js';
 const reference=JSON.parse(await readFile(new URL('../sources/give-me-jesus/melody.json',import.meta.url),'utf8'));
@@ -28,3 +28,9 @@ const bars=loopBars(score).bars;assert.equal(bars.length,17);
 for(let from=1;from<=bars.length;from++)for(let to=from;to<=bars.length;to++)assert.ok(buildBarLoop(score,from,to).totalBeats>0);
 assert.equal(printOne(GIVE_ME_JESUS.id,3).length,1);
 console.log('Give Me Jesus: source melody/transposition/rhythm/ties, 45 syllables, both hands, 153 passage loops, Songbook and unchanged course totals passed');
+
+for(const {lesson,stepIndex} of songbook()) {
+ const title=songTitle(lesson,lesson.steps[stepIndex]);
+ assert.ok(!['Play it through','Your recital'].includes(title),'Songbook must show song names');
+ if(lesson.hymn&&lesson.steps[stepIndex].title==='Play it through')assert.equal(title,lesson.title);
+}

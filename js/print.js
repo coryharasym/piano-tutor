@@ -20,7 +20,7 @@ const KEY_NAMES = { C: 'C major', G: 'G major', D: 'D major', F: 'F major', Am: 
 
 export function songTitle(lesson, step) {
   if (lesson.recital) return lesson.piece.title;
-  if (lesson.hymn) return step.title === 'Your recital' ? lesson.title : step.title;
+  if (lesson.hymn) return ['Your recital','Play it through'].includes(step.title) ? lesson.title : step.title;
   return TITLES[lesson.id] || step.title || lesson.title;
 }
 

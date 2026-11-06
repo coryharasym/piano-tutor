@@ -17,7 +17,7 @@ const engine=process.env.AUDIT_BROWSER||'chromium';
 const browser=await pw[engine].launch({headless:true,...(engine==='chromium'?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox']}:{} )});
 const context=await browser.newContext({viewport:{width:874,height:402},deviceScaleFactor:3,isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Mobile/15E148 Safari/604.1'});
 const page=await context.newPage(),errors=[],report=[];page.on('pageerror',e=>errors.push(e.message));
-async function shot(name){await page.waitForTimeout(180);await page.screenshot({path:`${out}/${engine}-${name}.png`,scale:'css'});const result=await page.evaluate(()=>({viewport:[innerWidth,innerHeight],docWidth:document.documentElement.scrollWidth,head:[...document.querySelectorAll('.play-head > *')].filter(e=>e.getBoundingClientRect().height).map(e=>({class:e.className,w:e.getBoundingClientRect().width,y:e.getBoundingClientRect().y})),panels:[...document.querySelectorAll('.music,.stand-score,.fall-wrap,.kb-wrap,.stand-settings,.secondary-tools,.sheet,.session-dock')].filter(e=>e.getBoundingClientRect().height&&getComputedStyle(e).display!=='none').map(e=>({class:e.className,x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,scroll:e.scrollHeight,client:e.clientHeight})),clippedControls:[...document.querySelectorAll('button,summary,select')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&r.y>=0&&r.y<innerHeight&&(r.x<61||r.right>innerWidth-61||r.bottom>innerHeight-20);}).map(e=>({text:e.textContent.trim().slice(0,45),rect:e.getBoundingClientRect().toJSON()}))}));report.push({name,...result});
+async function shot(name){await page.waitForTimeout(400);await page.screenshot({path:`${out}/${engine}-${name}.png`,scale:'css'});const result=await page.evaluate(()=>({viewport:[innerWidth,innerHeight],docWidth:document.documentElement.scrollWidth,head:[...document.querySelectorAll('.play-head > *')].filter(e=>e.getBoundingClientRect().height).map(e=>({class:e.className,w:e.getBoundingClientRect().width,y:e.getBoundingClientRect().y})),panels:[...document.querySelectorAll('.music,.stand-score,.fall-wrap,.kb-wrap,.stand-settings,.secondary-tools,.sheet,.session-dock')].filter(e=>e.getBoundingClientRect().height&&getComputedStyle(e).display!=='none').map(e=>({class:e.className,x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,scroll:e.scrollHeight,client:e.clientHeight})),clippedControls:[...document.querySelectorAll('button,summary,select')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&r.y>=0&&r.y<innerHeight&&(r.x<61||r.right>innerWidth-61||r.bottom>innerHeight-20);}).map(e=>({text:e.textContent.trim().slice(0,45),rect:e.getBoundingClientRect().toJSON()}))}));report.push({name,...result});
 assert.equal(result.docWidth,874,`${name}: page overflows horizontally`);
 for(const panel of result.panels){
  if(['stand-settings','secondary-tools','sheet'].includes(panel.class)){
@@ -30,9 +30,12 @@ const score=result.panels.find(p=>p.class==='music'||p.class.startsWith('music '
 if(keyboard&&score)assert.ok(score.y+score.h<=keyboard.y+1,`${name}: score overlaps keyboard`);
 const dock=result.panels.find(p=>p.class==='session-dock');
 if(dock&&keyboard)assert.ok(keyboard.y+keyboard.h<=dock.y+1,`${name}: keyboard overlaps session dock`);
+if(name==='chord-feedback-browser-bars')assert.ok(score.h>=90,'Short landscape must retain a readable score viewport');
 if(name==='warmup-session')assert.ok(score.h>=75,`${name}: toolbar leaves too little score space`);
-await page.locator('.stand-system svg').evaluateAll(nodes=>nodes.forEach(svg=>{const box=svg.closest('.music,.stand-notation');if(box&&svg.getBoundingClientRect().height>box.clientHeight+1)throw Error('Score system taller than available viewport');}));
-await page.locator('.score-follow svg').evaluateAll(nodes=>nodes.forEach(svg=>{const r=svg.getBoundingClientRect(),box=svg.closest('.score-follow').getBoundingClientRect();if(r.bottom>box.bottom+1)throw Error('Following score is clipped');}));
+await page.locator('.music svg,.stand-notation svg').evaluateAll(nodes=>nodes.forEach(svg=>{
+ const vb=svg.viewBox.baseVal,r=svg.getBoundingClientRect();
+ if(r.width&&r.height&&vb.height&&r.height/vb.height<0.8)throw Error('Notation shrunk below readable scale');
+}));
 }
 const go=async hash=>{await page.goto(origin+'/'+hash);await page.waitForTimeout(120);};
 try{
@@ -50,5 +53,23 @@ await page.locator('[data-stand]').click();await shot('play-learning');
 await page.setViewportSize({width:874,height:320});await shot('play-learning-browser-bars');await page.locator('[data-stand]').click();await shot('play-stand-browser-bars');await page.locator('.stand-options summary').click();await shot('play-menu-browser-bars');
 await go('#/');await page.locator('[data-menu]').click();await page.locator('[data-course="beginner"]').click();await page.locator('[data-session]').click();await page.waitForSelector('[data-open="0"]');await page.locator('[data-open="0"]').click();await page.waitForSelector('[data-next]');await page.locator('[data-next]').click();await shot('warmup-session');
 await page.locator('[data-stand]').click();await shot('warmup-session-stand');
+await page.setViewportSize({width:874,height:402});
+await page.evaluate(async()=>{const {listener}=await import('./js/listen.js');listener.active=true;listener.muteUntil=0;listener.chordHeard=function(midis){this.chordStatus={detected:midis.slice(0,1),audible:true};return false;};});
+await go(`#/lesson/${ref.id}/${ref.step}`);
+await page.waitForTimeout(5200);await shot('chord-feedback');
+await page.setViewportSize({width:874,height:320});await shot('chord-feedback-browser-bars');
+await page.locator('[data-chord-easy]').click();await shot('easy-feedback-browser-bars');
+await page.locator('[data-along]').click();await page.waitForSelector('[data-loop]');await page.waitForTimeout(3000);await shot('wait-feedback-browser-bars');
+await page.locator('[data-mode] [data-v="flow"]').click();await shot('flow-countdown-browser-bars');
+await page.locator('.playalong-more summary').click();await shot('practice-more-browser-bars');
+assert.equal(await page.locator('[data-speed]').isVisible(),true);
+for(const b of await page.locator('[data-speed] button').all()){const box=await b.boundingBox();assert.ok(box.width>30&&box.x+box.width<=812,'Every speed choice fits the More panel');}
+await page.getByLabel('Practice tempo').selectOption('0.5');
+await page.keyboard.press('Escape');assert.equal(await page.locator('.playalong-more').getAttribute('open'),null);
+const title=await page.locator('.playalong .top-title').boundingBox(),mode=await page.locator('[data-mode]').boundingBox();
+assert.ok(title.x+title.width<=mode.x+1,'Title must not overlap mode controls');
+await page.setViewportSize({width:402,height:874});await page.waitForTimeout(150);
+assert.equal(await page.locator('.playalong-more').isVisible(),false);
+assert.equal(await page.locator('[data-speed]').isVisible(),true,'Rotation restores ordinary speed controls');
 assert.deepEqual(errors,[]);console.log(`iPhone 16 Pro landscape: ${report.length} screens at 874×402 and 874×320, simulated safe areas, menus, scores, keyboards and session dock passed (${engine})`);await writeFile(`${out}/${engine}-report.json`,JSON.stringify({engine,errors,report},null,2));
 }finally{await browser.close();await new Promise(r=>server.close(r));}

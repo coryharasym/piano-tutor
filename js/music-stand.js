@@ -55,9 +55,7 @@ export function renderStandScore(el,opts,prefs) {
   }
   el.querySelectorAll('svg').forEach(svg=>{
     svg.style.width=`${width*prefs.zoom}px`;svg.style.height='auto';
-    // A complete system must be visible before scrolling to the next one,
-    // even when the keyboard and session bar share a short phone screen.
-    if(prefs.full)svg.style.maxHeight=`${Math.max(48,el.clientHeight-16)}px`;
+    // Preserve readable system size; the score panel scrolls in short viewports.
   });
   el.scrollTop=oldScroll;
 }

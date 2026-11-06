@@ -38,7 +38,7 @@ try{
  assert.equal(await page.locator('.kb-wrap').isVisible(),false);
  await page.locator('.stand-options summary').click();await page.locator('[data-full]').click();await page.getByLabel('Score size').selectOption('1.25');await page.locator('.stand-options summary').click();
  await page.getByLabel('First bar').selectOption('2');await page.getByLabel('Last bar').selectOption('3');
- await page.locator('[data-loop]').click();await page.getByLabel('Practice tempo').selectOption('0.5');
+ await page.locator('[data-loop]').click();if(await page.locator('.playalong-more').isVisible())await page.locator('.playalong-more summary').click();await page.getByLabel('Practice tempo').selectOption('0.5');if(await page.locator('.playalong-more').isVisible())await page.locator('.playalong-more summary').click();
  if(await page.locator('[data-hand]').count())await page.locator('[data-hand]').click();
  await page.screenshot({path:'/tmp/piano-personal-stand-portrait.png'});
  const savedHand=(await data()).repertoire[`${piece.lesson}:${piece.step}`].settings.hand;await page.reload();await page.waitForSelector('.stand-notation svg');if(await page.locator('[data-hand]').count())assert.equal(await page.locator('[data-hand]').innerText(),{both:'Both hands',R:'Right hand',L:'Left hand'}[savedHand]);
