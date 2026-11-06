@@ -37,7 +37,7 @@ await page.locator('.score-follow svg').evaluateAll(nodes=>nodes.forEach(svg=>{c
 const go=async hash=>{await page.goto(origin+'/'+hash);await page.waitForTimeout(120);};
 try{
 await go('#/');await page.waitForSelector('[data-session]');await shot('home');
-await page.locator('[data-settings]').click();await shot('settings');await page.locator('[data-close]').click();
+await page.locator('[data-menu]').click();await shot('home-menu');await page.locator('[data-settings]').click();await shot('settings');await page.locator('[data-close]').click();
 await page.locator('[data-session]').click();await page.locator('[data-minutes="15"]').click();await shot('session');
 await go('#/free');await shot('free-play');await go('#/metronome');await shot('metronome');await go('#/songbook');await shot('songbook');await go('#/notes/library');await shot('chapter-notes');await go('#/pieces');await page.locator('[data-add]').click();await shot('pieces');
 const ref=await page.evaluate(async()=>{const {songbook}=await import('./js/print.js');const {savePiece}=await import('./js/personal.js');const {store}=await import('./js/store.js');const p=songbook('intermediate').find(p=>p.lesson.steps[p.stepIndex].rh&&p.lesson.steps[p.stepIndex].lh);savePiece(p.lesson.id,p.stepIndex);store.setting('course','intermediate');return {id:p.lesson.id,step:p.stepIndex};});
