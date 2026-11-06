@@ -18,6 +18,10 @@ import { mountSheet } from './sheet.js';
 import { mountNotes } from './notes.js';
 import { showCalibration, calibrationCount } from './calibration.js';
 import { ChordCoach } from './chord-coach.js';
+import { mountSession, mountPieces, mountTechnique, sessionDock } from './workspace.js';
+import { savePiece, savedPiece, visitPiece, escapeHTML, rememberSettings } from './personal.js';
+import { relatedTechnique } from './technique.js';
+import { mountStandTools, renderStandScore } from './music-stand.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -33,6 +37,11 @@ window.addEventListener('hashchange', route);
 function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
+  if (view === 'session' || view === 'pieces' || view === 'technique') {
+    keepAwake(false);
+    const options={go,onBack:()=>go('#/')};
+    return view==='session'?mountSession(app,options):view==='pieces'?mountPieces(app,options):mountTechnique(app,options);
+  }
   // Reuse this warm-up while navigating its steps; refresh on a new start or course.
   if (id==='warmup' && (!findLesson(id) || Number(step)===0 || findLesson(id).lesson.course!==validCourse(store.setting('course')))) addLesson(PRACTICE_SHELF,buildWarmup(store.data.done,store.setting('course'),today()));
   // Daily practice is built for today; the drill gets fresh notes on each visit.
@@ -139,6 +148,8 @@ function showHome() {
       <div class="head-actions">
         <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
         <button class="pill" data-songbook>${icons.book}<span>Songbook</span></button>
+        <button class="pill" data-pieces>My Pieces</button>
+        <button class="pill" data-technique>Technique videos</button>
         <button class="pill" data-notes>${icons.book}<span>Chapter notes</span></button>
         <button class="icon-btn" data-settings aria-label="Settings">${icons.gear}</button>
       </div>
@@ -152,6 +163,9 @@ function showHome() {
   </main>`);
 
   const cont = $('.continue', el);
+  const sessionCard=h(`<section class="session-launch"><div><span class="eyebrow">Your daily routine</span><h2>Make time for music</h2><p>5, 15 or 30 minutes · Warm-up, review, learning and a song</p></div><button class="btn primary" data-session>${store.data.sessions?.[course]?'Resume practice':'Start practice'}</button></section>`);
+  el.insertBefore(sessionCard,cont);
+  $('[data-session]',sessionCard).addEventListener('click',()=>go('#/session'));
   const target = upNext || selectedUnits[0].lessons[0];
   const resume = last && !store.isDone(last.lesson) ? last : null;
   const contLesson = resume ? findLesson(resume.lesson).lesson : target;
@@ -218,6 +232,8 @@ function showHome() {
 
   $('[data-notes]', el).addEventListener('click', () => go('#/notes/'+courseInfo.notes));
   $('[data-free]', el).addEventListener('click', () => go('#/free'));
+  $('[data-pieces]', el).addEventListener('click', () => go('#/pieces'));
+  $('[data-technique]', el).addEventListener('click', () => go('#/technique'));
   el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
   $('[data-settings]', el).addEventListener('click', showSettings);
   $('.head-actions', el).insertBefore(micButton({ labelled: true }), $('[data-settings]', el));
@@ -390,9 +406,12 @@ function showFreePlay() {
 // ---------------------------------------------------------------- play along
 function showPlayAlong(id, stepIndex) {
   keepAwake(true);
-  const step = findLesson(id).lesson.steps[stepIndex];
+  const {lesson}=findLesson(id);
+  const step = lesson.steps[stepIndex];
   if (!step || step.t !== 'play') return go(`#/lesson/${id}/${stepIndex}`);
-  disposers.push(mountPlayAlong(app, sung(step), { micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`), onCalibrate: midis => showCalibration(midis) }));
+  visitPiece(id,stepIndex);
+  disposers.push(mountPlayAlong(app, sung(step), { lessonId:id, stepIndex, allowSave:!lesson.daily&&!lesson.warmup&&!lesson.recital, micButton, onExit: () => go(`#/lesson/${id}/${stepIndex}`), onCalibrate: midis => showCalibration(midis) }));
+  sessionDock(app.firstElementChild,{go,lessonId:id,onDispose:fn=>disposers.push(fn)});
 }
 
 // ---------------------------------------------------------------- printing
@@ -469,6 +488,7 @@ function showLesson(id, stepIndex) {
   const ctx = {
     el, stage: $('.stage', el),
     playAlong: `#/play/${id}/${stepIndex}`,
+    lessonId:id, stepIndex, lesson,
     complete: () => {
       stepDone = true;
       if (lesson.recital && ['intermediate','advanced'].includes(lesson.course) && step.final) {
@@ -485,6 +505,7 @@ function showLesson(id, stepIndex) {
   else if (step.t === 'quiz') renderQuiz(step, ctx);
   else if (step.t === 'play') renderPlay(sung(step), ctx);
   else if (step.t === 'choose') renderChoose(step, lesson, ctx);
+  sessionDock(el,{go,lessonId:id,onDispose:fn=>disposers.push(fn)});
 }
 
 // "3 days in a row", counting back from today (or yesterday, if not yet today).
@@ -623,6 +644,7 @@ const verseOf = (step) => Math.min(store.setting('verse') || 1, verseCount(step)
 const sung = (step) => (verseOf(step) > 1 ? { ...step, lyrics: step.verses[verseOf(step) - 2] } : step);
 
 function renderPlay(step, ctx) {
+  visitPiece(ctx.lessonId,ctx.stepIndex);
   const practice = buildPractice(step);
   const { moments, staves } = practice;
   const reps = step.reps || 1;
@@ -671,12 +693,26 @@ function renderPlay(step, ctx) {
   let showTargets = step.hint !== false;
   let finished = false;
   let assistedChords = 0;
+  let userPaused = false;
+  let standPrefs;
+  if (!step.anyNote && !step.anyOrder) standPrefs=mountStandTools($('.play-head',el),ctx.el,()=>{music.innerHTML='';drawMusic();});
+  const personalTools=h('<div class="practice-personal-tools"></div>');
+  $('.play-head',el).appendChild(personalTools);
+  if (step.song && !ctx.lesson.daily && !ctx.lesson.warmup && !ctx.lesson.recital) {
+    const save=h(`<button class="pill" data-save-piece>${savedPiece(ctx.lessonId,ctx.stepIndex)?'Saved in My Pieces':'Save piece'}</button>`);
+    save.onclick=()=>{savePiece(ctx.lessonId,ctx.stepIndex);rememberSettings(ctx.lessonId,ctx.stepIndex,{listenSpeed});save.textContent='Saved in My Pieces';toast('Saved to My Pieces.');};personalTools.appendChild(save);
+  }
+  const video=relatedTechnique(ctx.lesson.title+' '+step.title);
+  const more=h(`<details><summary>More</summary><div class="secondary-tools"><a href="${escapeHTML(video.url)}" target="_blank" rel="noopener noreferrer">Technique: ${escapeHTML(video.title)} ↗</a><button class="pill" data-my-pieces>My Pieces</button></div></details>`);
+  more.querySelector('[data-my-pieces]').onclick=()=>go('#/pieces');personalTools.appendChild(more);
 
   const kb = new Keyboard(kbWrap, { lo: range[0], hi: range[1], labels, onPress: (m) => input(m, 'tap') });
 
   // ---- display
   const strip = !step.staff && !step.anyNote;
   function drawMusic() {
+    const alongLabel=$('[data-along] span',el);
+    if(alongLabel)alongLabel.textContent=standPrefs?.enabled?'Passage practice':'Play along';
     if (step.anyNote) {
       music.innerHTML = `<div class="big-prompt">${finished ? 'Heard you!' : 'Play any key'}</div>`;
       return;
@@ -686,15 +722,17 @@ function renderPlay(step, ctx) {
     const fin = demoAt == null && finished;
     const lyricEl = $('.lyric-line', el);
     if (lyricEl) lyricEl.innerHTML = lyricHTML(lyricLine(practice.lyrics, moments, fin ? moments.length - 1 : at));
-    if (step.staff) {
+    if (step.staff || standPrefs?.enabled) {
       const cur = moments[at]?.items[0];
       const done = new Set();
       moments.slice(0, at).forEach((m) => m.items.forEach((it) => done.add(`${it.staff}:${it.index}`)));
-      renderStaff(music, {
+      const opts={
         staves: staves.map((s) => ({ clef: s.clef, events: s.events })),
         key: step.key || 'C', time: step.time || '4/4', pickup: step.pickup,
         current: cur && !fin ? { staff: cur.staff, index: cur.index } : null, done, showNames: step.names, showFingers: !!step.showFingers,
-      });
+      };
+      if(standPrefs?.enabled) renderStandScore(music,opts,standPrefs);
+      else renderStaff(music,opts);
       return;
     }
     // Note strip: one chip per moment, width by length.
@@ -749,6 +787,8 @@ function renderPlay(step, ctx) {
 
   function reset() {
     mi = 0; satisfied = new Set(); finished = false; heard = []; startedAt = null;
+    userPaused=false;
+    pauseBtn.textContent='Pause';
     assistedChords = 0;
     listener.clearRecent();
     chordCoach.reset();
@@ -761,7 +801,7 @@ function renderPlay(step, ctx) {
   let pause = false;
   function input(midi, source) {
     if (listener.calibrating && source === 'mic') return;
-    if (finished || pause) { kb.flash(midi, 'press'); return; }
+    if (finished || pause || userPaused) { kb.flash(midi, 'press'); return; }
     if (step.anyNote) {
       kb.flash(midi, 'good');
       feedback.innerHTML = `<span class="ok">I heard <b>${prettyName(midiToName(midi))}</b>${midi === 60 ? ' (Middle C)' : ''}.</span>`;
@@ -866,7 +906,7 @@ function renderPlay(step, ctx) {
   const chordTimer = setInterval(() => {
     paintChordHelp();
     const m = moments[mi];
-    const active = !finished && !pause && listener.active && !listener.calibrating && performance.now() >= listener.muteUntil;
+    const active = !finished && !pause && !userPaused && listener.active && !listener.calibrating && performance.now() >= listener.muteUntil;
     if (!active || !m || m.items.length < 2 || step.anyOrder) {
       chordCoach.update([], {}, { active: false }); return;
     }
@@ -887,14 +927,18 @@ function renderPlay(step, ctx) {
   // ---- demo playback
   let demo = null;
   const demoBtn = $('[data-demo]', el);
+  const pauseBtn=h('<button class="pill" data-practice-pause>Pause</button>');
+  $('.play-tools',el).appendChild(pauseBtn);
+  pauseBtn.onclick=()=>{userPaused=!userPaused;pauseBtn.textContent=userPaused?'Resume':'Pause';if(userPaused)stopDemo();listener.clearRecent();};
   // Listen can be slowed down or sped up too.
-  let listenSpeed = store.setting('listenSpeed') || 1;
+  let listenSpeed = savedPiece(ctx.lessonId,ctx.stepIndex)?.settings?.listenSpeed || store.setting('listenSpeed') || 1;
   const speedBtn = $('[data-speed]', el);
   const paintSpeed = () => { if (speedBtn) speedBtn.textContent = SPEEDS.find(([v]) => v === listenSpeed)?.[1] || '1×'; };
   speedBtn?.addEventListener('click', () => {
     const i = SPEEDS.findIndex(([v]) => v === listenSpeed);
     listenSpeed = SPEEDS[(i + 1) % SPEEDS.length][0];
     store.setting('listenSpeed', listenSpeed);
+    rememberSettings(ctx.lessonId,ctx.stepIndex,{listenSpeed});
     paintSpeed();
     if (demo) { stopDemo(); demoBtn.click(); }
   });
@@ -925,7 +969,7 @@ function renderPlay(step, ctx) {
   $('[data-hint]', el)?.addEventListener('click', () => { showTargets = true; paintTargets(); });
 
   // Redraw sheet music when the size changes (e.g. rotating the phone).
-  if (step.staff) {
+  if (step.staff || standPrefs) {
     const ro = new ResizeObserver(() => drawMusic());
     ro.observe(music);
     disposers.push(() => ro.disconnect());
