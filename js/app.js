@@ -674,7 +674,7 @@ function renderPlay(step, ctx) {
         ${canPlayAlong ? `<button class="pill accent" data-along>${icons.play}<span>Play along</span></button>` : ''}
         ${step.song ? `<button class="icon-btn" data-print aria-label="Print sheet music">${icons.print}</button>` : ''}
         ${step.hint === false ? `<button class="pill" data-hint>${icons.bulb}<span>Show me</span></button>` : ''}
-        ${step.anyNote ? '' : `<button class="icon-btn" data-restart aria-label="Start again">${icons.restart}</button>`}
+        ${step.anyNote ? '' : `<button class="icon-btn practice-repeat" data-repeat aria-pressed="false">${icons.restart}<span>Repeat off</span></button>`}
       </div>
     </div>
     <div class="music"></div>
@@ -694,6 +694,18 @@ function renderPlay(step, ctx) {
   const chordCoach = new ChordCoach($('.chord-coach', el), { levelSource: listener, getEasy: () => store.setting('easyChords'), setEasy: value => store.setting('easyChords', value), onChange: () => listener.clearRecent() });
   disposers.push(() => chordCoach.dispose());
 
+  let autoRepeat = !!store.setting('autoRepeat'), repeatTimer = null, roundTimer = null;
+  const repeatButton=$('[data-repeat]',el);
+  const paintRepeat=()=>{if(repeatButton){repeatButton.setAttribute('aria-pressed',String(autoRepeat));repeatButton.setAttribute('aria-label',`Auto-repeat: ${autoRepeat?'on':'off'}`);repeatButton.title=`Auto-repeat: ${autoRepeat?'on':'off'}`;repeatButton.querySelector('span').textContent=autoRepeat?'Repeat on':'Repeat off';}};
+  paintRepeat();
+  const cancelRepeat=()=>{clearTimeout(repeatTimer);repeatTimer=null;};
+  const scheduleRepeat=()=>{
+    cancelRepeat();
+    if(!autoRepeat||!finished||userPaused||step.anyNote)return;
+    repeatTimer=setTimeout(()=>{repeatTimer=null;if(autoRepeat&&finished&&!userPaused){rep=0;showTargets=step.hint!==false;reset();}},1400);
+  };
+  repeatButton?.addEventListener('click',()=>{autoRepeat=!autoRepeat;store.setting('autoRepeat',autoRepeat);paintRepeat();scheduleRepeat();});
+  disposers.push(()=>{cancelRepeat();clearTimeout(roundTimer);});
   let rep = 0, mi = 0;
   let satisfied = new Set(); // indexes into moment.items
   // Steps with dynamics or staccato: what the mic heard of each note's loudness and length.
@@ -719,6 +731,7 @@ function renderPlay(step, ctx) {
   const more=h(`<details><summary>More</summary><div class="secondary-tools"><a href="${escapeHTML(video.url)}" target="_blank" rel="noopener noreferrer">Technique: ${escapeHTML(video.title)} ↗</a><button class="pill" data-my-pieces>My Pieces</button></div></details>`);
   const instruction=h('<p class="compact-instruction"></p>');instruction.textContent=step.say||'';
   $('.secondary-tools',more).prepend(instruction);
+  if(!step.anyNote){const restart=h(`<button class="pill" data-restart>${icons.restart} Start again</button>`);$('.secondary-tools',more).appendChild(restart);}
   more.querySelector('[data-my-pieces]').onclick=()=>go('#/pieces');personalTools.appendChild(more);
   disposers.push(bindPracticeMenu(more));
 
@@ -802,6 +815,8 @@ function renderPlay(step, ctx) {
   }
 
   function reset() {
+    cancelRepeat();clearTimeout(roundTimer);pause=false;stopDemo();
+    el.classList.remove('success');
     mi = 0; satisfied = new Set(); finished = false; heard = []; startedAt = null;
     userPaused=false;
     pauseBtn.textContent='Pause';
@@ -873,7 +888,7 @@ function renderPlay(step, ctx) {
     feedback.innerHTML = '<span class="ok">Nice! Once more.</span>';
     piano.chime();
     drawMusic(); paintTargets();
-    setTimeout(() => {
+    roundTimer=setTimeout(() => {
       pause = false;
       mi = 0;
       listener.clearRecent();
@@ -908,13 +923,14 @@ function renderPlay(step, ctx) {
     }
     if (!step.anyNote) {
       const again = h(`<button class="pill again">${icons.restart}<span>Play again</span></button>`);
-      again.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
+      again.addEventListener('click', () => { autoRepeat=false;store.setting('autoRepeat',false);paintRepeat();rep = 0; showTargets = step.hint !== false; reset(); });
       feedback.append(' ', again);
     }
     drawMusic(); paintTargets(); paintReps();
     ctx.complete();
     el.classList.add('success');
     setTimeout(() => el.classList.remove('success'), 1200);
+    scheduleRepeat();
   }
 
   // ---- mic
@@ -948,7 +964,7 @@ function renderPlay(step, ctx) {
   const demoBtn = $('[data-demo]', el);
   const pauseBtn=h('<button class="pill" data-practice-pause>Pause</button>');
   $('.play-tools',el).appendChild(pauseBtn);
-  pauseBtn.onclick=()=>{userPaused=!userPaused;pauseBtn.textContent=userPaused?'Resume':'Pause';if(userPaused)stopDemo();listener.clearRecent();};
+  pauseBtn.onclick=()=>{userPaused=!userPaused;pauseBtn.textContent=userPaused?'Resume':'Pause';if(userPaused){stopDemo();cancelRepeat();}else if(finished)scheduleRepeat();listener.clearRecent();};
   // Listen can be slowed down or sped up too.
   let listenSpeed = savedPiece(ctx.lessonId,ctx.stepIndex)?.settings?.listenSpeed || store.setting('listenSpeed') || 1;
   const speedBtn = $('[data-speed]', el);
