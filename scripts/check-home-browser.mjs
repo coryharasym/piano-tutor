@@ -24,6 +24,7 @@ try{
  for(const [width,height]of [[320,740],[402,874],[874,402],[874,320],[1280,800]]){
   await page.setViewportSize({width,height});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(120);
   assert.equal(await page.locator('.head-actions button').count(),2,'Header should only contain microphone and Menu');
+  assert.equal(await page.locator('.home [data-course]').count(),0,'Course choices live only in Menu');
   assert.equal(await page.locator('.session-launch').count(),0,'Large practice banner should be removed');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   const box=await page.locator('.continue-card').boundingBox(),session=await page.locator('[data-session]').boundingBox();
@@ -32,7 +33,13 @@ try{
   await page.locator('[data-menu]').click();await page.waitForSelector('.home-menu');
   assert.equal(await page.locator('[data-menu]').getAttribute('aria-expanded'),'true');
   assert.ok(await page.locator('#app').evaluate(e=>e.inert));
+  await page.waitForTimeout(400);
   assert.equal(await page.locator('.home-menu-groups section').count(),3);
+  assert.equal(await page.locator('.home-menu [data-course]').count(),3);
+  assert.equal(await page.locator('[data-course="beginner"]').getAttribute('aria-pressed'),'true');
+  for(const button of await page.locator('[data-course]').all()) {
+   const b=await button.boundingBox();assert.ok(b.x>=0&&b.x+b.width<=width+1&&b.height>=44,'Course option fits with a touch target '+JSON.stringify({width,height,b}));
+  }
   assert.equal(await page.locator('[data-daily]').isEnabled(),true);
   const modal=await page.locator('.home-menu .sheet').boundingBox();assert.ok(modal.x>=0&&modal.x+modal.width<=width+1);
   if(width===874&&height===402){await page.waitForTimeout(400);await page.screenshot({path:'/tmp/piano-home-menu-final.png',scale:'css'});}
@@ -55,7 +62,17 @@ try{
  await page.evaluate(async()=>{const {store}=await import('./js/store.js');store.reset();});await page.reload();
  await page.locator('[data-menu]').click();assert.equal(await page.locator('[data-daily]').isDisabled(),true);assert.equal(await page.locator('[data-drill]').isDisabled(),true);
  await page.locator('[data-close]').click();
- await page.locator('[data-course="advanced"]').click();await page.locator('[data-menu]').click();
+ await page.locator('[data-menu]').click();await page.locator('[data-course="advanced"]').click();await page.locator('[data-menu]').click();
  assert.equal(await page.locator('[data-drill]').isEnabled(),true);assert.equal(await page.locator('[data-daily]').isDisabled(),true);
+ await page.locator('[data-close]').click();
+ for(const [course,total] of [['intermediate',64],['advanced',64],['beginner',94]]) {
+  await page.locator('[data-menu]').click();await page.locator(`[data-course="${course}"]`).click();
+  assert.equal(await page.locator('.home-menu').count(),0,'Choosing a level closes Menu');
+  assert.match(await page.locator('.home-progress').innerText(),new RegExp(`of ${total} lessons`));
+  await page.reload();await page.locator('[data-menu]').click();
+  assert.equal(await page.locator(`[data-course="${course}"]`).getAttribute('aria-pressed'),'true','level survives reload');
+  assert.equal(await page.locator('[data-course][aria-pressed="true"]').count(),1);
+  await page.locator('[data-close]').click();
+ }
  assert.deepEqual(errors,[]);console.log('Compact home at five viewports, visible primary actions, grouped menu routes, focus/Escape/background lock, readiness gates and progress preservation passed');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
