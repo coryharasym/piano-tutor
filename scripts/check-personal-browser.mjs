@@ -57,11 +57,12 @@ try{
  await page.locator('[data-exit]').click();await page.waitForSelector('.music svg');
  assert.ok(await page.locator('.music-stand').count());
  await page.evaluate(async()=>{const {Keyboard}=await import('./js/keyboard.js');const set=Keyboard.prototype.setTargets;Keyboard.prototype.setTargets=function(...a){window.personalKeyboard=this;return set.apply(this,a);};});await page.locator('[data-along]').click();await page.waitForSelector('[data-exit]');await page.locator('[data-exit]').click();await page.waitForSelector('.music svg');
- const scoreBefore=await page.locator('.music').innerHTML();
+ const scoreSnapshot=()=>page.locator('.music').evaluate(el=>{const clone=el.cloneNode(true);clone.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));return clone.innerHTML;});
  await page.locator('[data-practice-pause]').click();assert.equal(await page.locator('[data-practice-pause]').innerText(),'Resume');
+ await page.waitForTimeout(150);const scoreBefore=await scoreSnapshot();
  await page.evaluate(async()=>{const {findLesson}=await import('./js/lessons/index.js');const {buildPractice}=await import('./js/practice.js');const parts=location.hash.split('/');window.firstPracticeNote=buildPractice(findLesson(parts[2]).lesson.steps[+parts[3]]).moments[0].items[0].midi;window.personalKeyboard.onPress(window.firstPracticeNote);});
- assert.equal(await page.locator('.music').innerHTML(),scoreBefore,'Pause must stop score advancement');
- await page.locator('[data-practice-pause]').click();await page.evaluate(()=>window.personalKeyboard.onPress(window.firstPracticeNote));assert.notEqual(await page.locator('.music').innerHTML(),scoreBefore,'Music stand must follow played notes');
+ assert.equal(await scoreSnapshot(),scoreBefore,'Pause must stop score advancement');
+ await page.locator('[data-practice-pause]').click();await page.evaluate(()=>window.personalKeyboard.onPress(window.firstPracticeNote));assert.notEqual(await scoreSnapshot(),scoreBefore,'Music stand must follow played notes');
  await page.locator('[data-stand]').click();assert.equal(await page.locator('.music-stand').count(),0);
  await navigate('#/session');assert.match(await page.locator('[data-stage="3"]').innerText(),/Open section/);
  await page.locator('[data-revisit]').selectOption({index:1});

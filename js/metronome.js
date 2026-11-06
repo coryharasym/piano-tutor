@@ -11,6 +11,7 @@ const clamp = (n) => Math.max(40, Math.min(208, Math.round(n)));
 export function mountMetronome(root, { onBack }) {
   let bpm = store.setting('metroBpm') || 80;
   let beats = store.setting('metroBeats') || 4;
+  let starting = false, generation = 0;
   let timer = null, nextAt = 0, beat = 0, taps = [];
 
   const el = document.createElement('main');
@@ -43,7 +44,7 @@ export function mountMetronome(root, { onBack }) {
     $('[data-slider]').value = bpm;
     el.querySelectorAll('[data-beats]').forEach((b) => b.classList.toggle('on', +b.dataset.beats === beats));
     $('.metro-dots').innerHTML = Array.from({ length: beats }, (_, i) => `<i class="${i === 0 ? 'one' : ''}"></i>`).join('');
-    $('[data-go]').innerHTML = timer ? `${icons.stop} Stop` : `${icons.play} Start`;
+    $('[data-go]').innerHTML = (timer || starting) ? `${icons.stop} Stop` : `${icons.play} Start`;
   }
   const setBpm = (n) => { bpm = clamp(n); store.setting('metroBpm', bpm); paint(); };
 
@@ -61,7 +62,14 @@ export function mountMetronome(root, { onBack }) {
     }
   }
   async function start() {
-    await piano.unlock();
+    if (timer || starting) return;
+    starting = true;
+    const request = ++generation;
+    paint();
+    try { await piano.unlock(); }
+    catch (error) { if (request === generation) { starting = false; paint(); } return; }
+    if (request !== generation) return;
+    starting = false;
     beat = 0;
     nextAt = piano.ctx.currentTime + 0.08;
     timer = setInterval(schedule, 25);
@@ -69,6 +77,7 @@ export function mountMetronome(root, { onBack }) {
     paint();
   }
   function stop() {
+    generation++; starting = false;
     clearInterval(timer);
     timer = null;
     el.querySelectorAll('.metro-dots i').forEach((d) => d.classList.remove('lit'));
@@ -91,7 +100,7 @@ export function mountMetronome(root, { onBack }) {
     taps = taps.filter((t) => now - t < 2500).concat(now).slice(-6);
     if (taps.length >= 2) setBpm(60000 / ((taps[taps.length - 1] - taps[0]) / (taps.length - 1)));
   });
-  $('[data-go]').addEventListener('click', () => (timer ? stop() : start()));
+  $('[data-go]').addEventListener('click', () => ((timer || starting) ? stop() : start()));
   paint();
   return stop;
 }
