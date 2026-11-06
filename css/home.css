@@ -66,3 +66,10 @@
 .menu-course-options { display:flex; flex-wrap:wrap; gap:8px; }
 .menu-course-options .pill { flex:1 1 auto; min-height:44px; height:auto; padding:8px 12px; justify-content:center; font-size:.85rem; }
 .menu-course-options [aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.songbook-search { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin:16px auto; padding:0 16px; max-width:1000px; }
+.songbook-search label { display:grid; gap:6px; flex:1 1 180px; font-weight:600; }
+.songbook-search input,.songbook-search select { width:100%; min-height:44px; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); font:inherit; }
+.songbook-search p { flex-basis:100%; margin:0; }
+.contents li[hidden],.papers .paper[hidden] { display:none!important; }
+@media print { .songbook-search { display:none!important; } }

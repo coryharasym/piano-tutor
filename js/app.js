@@ -242,7 +242,7 @@ function showHomeMenu(onClose) {
     </section>
     <nav class="home-menu-groups" aria-label="Piano Tutor tools">
       <section><h3>Music &amp; resources</h3>
-        <button class="menu-link" data-songbook>Songbook<small>Browse and print your course songs</small></button>
+        <button class="menu-link" data-songbook>Songbook<small>Search and print songs from every level</small></button>
         <button class="menu-link" data-notes>Chapter notes<small>Read or download lesson summaries</small></button>
         <button class="menu-link" data-technique>Technique videos<small>Demonstrations from piano teachers</small></button>
       </section>
@@ -435,7 +435,7 @@ function showPrint(id, stepIndex) {
 
 function showSongbook() {
   keepAwake(false);
-  disposers.push(mountPrint(app, { songs: songbook(store.setting('course')), heading: 'The Piano Tutor songbook', onBack: () => go('#/') }));
+  disposers.push(mountPrint(app, { songs: songbook(), browse: true, heading: 'The Piano Tutor songbook', onBack: () => go('#/') }));
 }
 
 // ---------------------------------------------------------------- lesson
