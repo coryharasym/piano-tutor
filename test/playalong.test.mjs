@@ -18,7 +18,8 @@ let frame; globalThis.requestAnimationFrame=fn=>(frame=fn,1);globalThis.cancelAn
 let clock=0;globalThis.performance={now:()=>clock};
 const listener={onNote:new Set(),active:true,clearRecent(){},chordHeard:()=>false};
 const piano={chime(){},play:()=>({stop(){}})};
-const store={setting:()=>undefined};
+const settings={};
+const store={setting:(key,value)=>value===undefined?settings[key]:(settings[key]=value)};
 class Keyboard {constructor(){this.keys=new Map();} setTargets(){} flash(){}}
 globalThis.loopTest={...practice,...theory,ChordCoach,listener,piano,store,Keyboard,icons:{}};
 let source=readFileSync(new URL('../js/playalong.js',import.meta.url),'utf8');
@@ -39,3 +40,25 @@ assert.equal(node('[data-loop-to]').value,'2');
 click('[data-loop]');assert.equal(node('[data-loop]')['aria-pressed'],'false');
 dispose();assert.equal(listener.onNote.size,0);
 console.log('Play along loop, pause, range correction and cleanup passed');
+
+// Flow preparation is ten seconds at any tempo/speed, and freezes on pause.
+for (const [tempo,speed] of [[60,.5],[160,1.5]]) {
+ settings.playMode='flow';settings.playSpeed=speed;
+ const stop=mountPlayAlong({replaceChildren(){}},{title:'Countdown',rh:'C4/w D4/w',tempo},{micButton:()=>({}),onExit(){}});
+ assert.equal(node('[data-countdown-seconds]').textContent,'10');
+ assert.equal(node('.flow-countdown').hidden,false);
+ tick(9);assert.equal(node('[data-countdown-seconds]').textContent,'1');
+ for(const fn of listener.onNote)fn(60);
+ assert.equal(node('.score').textContent,'0 / 2','preparation cannot score notes');
+ click('[data-pause]');tick(5);
+ assert.equal(node('[data-countdown-seconds]').textContent,'1');
+ assert.equal(node('[data-countdown-label]').textContent,'Countdown paused');
+ click('[data-pause]');tick(1);
+ assert.equal(node('.flow-countdown').hidden,true,'Flow begins after ten running seconds');
+ for(const fn of listener.onNote)fn(60);tick(.05);
+ assert.equal(node('.score').textContent,'1 / 2');
+ click('[data-restart]');
+ assert.equal(node('[data-countdown-seconds]').textContent,'10','restart restores preparation');
+ stop();
+}
+console.log('Flow ten-second countdown, independent tempo/speed, pause, early input and restart passed');

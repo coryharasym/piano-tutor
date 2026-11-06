@@ -41,6 +41,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
   const el = document.createElement('main');
   el.className = 'lesson playalong';
   el.innerHTML = `
+    <div class="flow-countdown" role="timer" aria-label="Flow starting countdown" hidden><span data-countdown-label>Flow starts in</span><strong data-countdown-seconds>10</strong><span>Get your hands ready</span></div>
     <header class="topbar">
       <button class="icon-btn" data-exit aria-label="Back to lesson">${icons.back}</button>
       <div class="top-title"><span class="eyebrow">Play along</span><span>${step.title}</span></div>
@@ -80,6 +81,9 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
   const ctx2d = canvas.getContext('2d');
   const msg = el.querySelector('.fall-msg');
   const hudCount = el.querySelector('.count');
+  const countdown = el.querySelector('.flow-countdown');
+  const countdownSeconds = el.querySelector('[data-countdown-seconds]');
+  const countdownLabel = el.querySelector('[data-countdown-label]');
   const hudScore = el.querySelector('.score');
   const chordHelp = el.querySelector('.mic-chord-help');
   const scorePractice = buildPractice(step);
@@ -115,7 +119,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
   const kb = new Keyboard(el.querySelector('.kb-wrap'), { lo: range[0], hi: range[1], labels: 'c', onPress: (m) => input(m, 'tap') });
 
   // ---- state
-  let beat, running, finished, wrong, lastFrame, raf, nextMoment, assistedChords;
+  let beat, running, finished, wrong, lastFrame, raf, nextMoment, assistedChords, countdownRemaining;
   const bps = () => ((step.tempo || 80) * prefs.speed) / 60;
 
   function reset(nextPass = false) {
@@ -129,7 +133,8 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     lyricKey = ''; targetKey = '';
     el.querySelector('[data-pause]').textContent = 'Pause';
     items.forEach((it) => { it.state = 'pending'; it.auto = prefs.hand !== 'both' && it.hand !== prefs.hand; });
-    beat = -pulse.bar;
+    countdownRemaining = prefs.mode === 'flow' && !nextPass ? 10 : 0;
+    beat = countdownRemaining ? -countdownRemaining * bps() : -pulse.bar;
     nextMoment = 0;
     wrong = 0;
     assistedChords = 0;
@@ -142,6 +147,13 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     chordCoach.reset();
     chordHelp.hidden = true;
     paintSeg();
+    paintCountdown();
+  }
+
+  function paintCountdown() {
+    countdown.hidden = countdownRemaining <= 0;
+    countdownSeconds.textContent = String(Math.ceil(countdownRemaining));
+    countdownLabel.textContent = running ? 'Flow starts in' : 'Countdown paused';
   }
 
   function paintSeg() {
@@ -226,9 +238,16 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
 
   // ---- timing
   function tick(now) {
-    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    let dt = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    if (running && !finished) {
+    if (running && !finished && countdownRemaining > 0) {
+      const used = Math.min(dt, countdownRemaining);
+      countdownRemaining = Math.max(0, countdownRemaining - used);
+      if (countdownRemaining < 1e-6) countdownRemaining = 0;
+      dt -= used;
+      beat = -countdownRemaining * bps();
+    }
+    if (running && !finished && countdownRemaining === 0) {
       let next = beat + dt * bps();
       if (prefs.mode === 'wait') {
         while (nextMoment < moments.length && items.every((it) => it.moment !== nextMoment || it.state === 'hit' || it.auto)) nextMoment++;
@@ -251,6 +270,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
         if (looping) { pass++; reset(true); } else finish();
       }
     }
+    paintCountdown();
     updateTargets();
     updateLyric();
     draw();
@@ -284,7 +304,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     const at=prefs.mode==='wait'?Math.min(nextMoment,moments.length-1):following<0?moments.length-1:Math.max(0,following-1);
     const cur=moments[at]?.items[0];
     const key=[cur?.staff,cur?.index,standPrefs.full,standPrefs.zoom,el.clientWidth,el.querySelector('.stand-notation').clientHeight].join(':');
-    el.querySelector('.stand-count').textContent=step.title+' · '+(beat<0&&running?'Count in: '+Math.ceil(-beat/pulse.unit):finished?'Practice complete':!running?'Paused':`${looping?'Pass '+pass+' · ':''}${prefs.mode==='wait'?'Wait':'Flow'}`);
+    el.querySelector('.stand-count').textContent=step.title+' · '+(beat<0&&running?'Count in: '+(countdownRemaining > 0 ? Math.ceil(countdownRemaining)+' seconds' : Math.ceil(-beat/pulse.unit)):finished?'Practice complete':!running?'Paused':`${looping?'Pass '+pass+' · ':''}${prefs.mode==='wait'?'Wait':'Flow'}`);
     if(key===scoreKey)return;scoreKey=key;
     renderStandScore(el.querySelector('.stand-notation'),{staves:scorePractice.staves,key:step.key||'C',time:step.time||'4/4',pickup:step.pickup,current:cur?{staff:cur.staff,index:cur.index}:null,showFingers:!!step.showFingers,showNames:!!step.names},standPrefs);
   }
@@ -393,7 +413,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     g.globalAlpha = 1;
 
     // HUD
-    if (beat < 0 && running) hudCount.textContent = String(Math.ceil(-beat/pulse.unit));
+    if (beat < 0 && running && countdownRemaining === 0) hudCount.textContent = String(Math.ceil(-beat/pulse.unit));
     else hudCount.textContent = '';
     const hits = items.filter((it) => it.state === 'hit').length;
     const total = mine().length;
@@ -420,6 +440,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     running = !running; lastFrame = performance.now(); listener.clearRecent();
     accompaniment.forEach(h => h.stop()); accompaniment = [];
     e.currentTarget.textContent = running ? 'Pause' : 'Resume';
+    paintCountdown();
   });
   el.querySelectorAll('[data-mode] button').forEach((b) => b.addEventListener('click', () => {
     prefs.mode = b.dataset.v; store.setting('playMode', prefs.mode); reset();

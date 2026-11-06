@@ -66,7 +66,7 @@ try {
 
   // Flow has diagnostic feedback but no separate-note bypass.
   await page.locator('[data-mode] [data-v="flow"]').click();
-  await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===false);
+  await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===false,{},{timeout:15000});
   assert.equal(await assist.isVisible(),false);
   await pair(48,64);assert.equal(await assist.isVisible(),false);
   await page.locator('[data-pause]').click();
@@ -117,7 +117,7 @@ try {
   assert.match(await page.locator('.fall-msg').innerText(),/Passage completed, with chord assistance on 3 chords/);
   assert.doesNotMatch(await page.locator('.fall-msg').innerText(),/All 6 notes/);
   await page.locator('[data-mode] [data-v="flow"]').click();
-  await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===false);
+  await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===false,{},{timeout:15000});
   assert.equal(await easy.isVisible(),false,'Flow hides easy option even when saved on');
   await emit([48]);assert.equal(await page.locator('.score').innerText(),'0 / 6');
   assert.deepEqual(errors,[]);
