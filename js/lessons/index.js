@@ -12,6 +12,7 @@ import ux from './unitx.js';
 import { RECITALS, PIECES } from './recitals.js';
 import { DOXOLOGY_LESSONS } from './doxology.js';
 import { PRACTICE_SONGS } from './songs.js';
+import { GIVE_ME_JESUS } from './give-me-jesus.js';
 
 import { chooseRecital as chooseBeginnerRecital } from './recitals.js';
 import { chooseCourseRecital } from './recital-choices.js';
@@ -33,7 +34,7 @@ const ALL = UNITS.flatMap((unit) => unit.lessons.map((lesson) => ({ unit, lesson
 // Every hymn and recital piece, playable any time from the Hymns shelf.
 export const HYMN_SHELF = { id: 'hymns', title: 'Hymns' };
 // In course order, each labelled with its unit's number.
-const BEGINNER_HYMNS = PIECES.map((p) => ({ ...p, unitNumber: UNITS.find((u) => u.id === p.unit).number }))
+const BEGINNER_HYMNS = [...PIECES.map((p) => ({ ...p, unitNumber: UNITS.find((u) => u.id === p.unit).number })), GIVE_ME_JESUS]
   .sort((a, b) => a.unitNumber - b.unitNumber);
 export const HYMNS = [...BEGINNER_HYMNS.map(p=>({...p,course:'beginner'})),...INTERMEDIATE_HYMNS,...ADVANCED_HYMNS];
 const SHELF = HYMNS.map((lesson) => ({ unit: HYMN_SHELF, lesson }));
