@@ -65,7 +65,7 @@ try{
  await page.locator('[data-menu]').click();await page.locator('[data-course="advanced"]').click();await page.locator('[data-menu]').click();
  assert.equal(await page.locator('[data-drill]').isEnabled(),true);assert.equal(await page.locator('[data-daily]').isDisabled(),true);
  await page.locator('[data-close]').click();
- for(const [course,total] of [['intermediate',64],['advanced',64],['beginner',94]]) {
+ for(const [course,total] of [['intermediate',64],['advanced',64],['beginner',95]]) {
   await page.locator('[data-menu]').click();await page.locator(`[data-course="${course}"]`).click();
   assert.equal(await page.locator('.home-menu').count(),0,'Choosing a level closes Menu');
   assert.match(await page.locator('.home-progress').innerText(),new RegExp(`of ${total} lessons`));
