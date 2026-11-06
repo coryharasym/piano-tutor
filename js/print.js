@@ -110,7 +110,7 @@ function songPage(unit, lesson, step) {
 }
 
 // songs: [{ unit, lesson, stepIndex }]
-export function mountPrint(root, { songs, heading, onBack }) {
+export function mountPrint(root, { songs, heading, onBack, browse = false }) {
   const el = document.createElement('main');
   el.className = 'print-view';
   el.innerHTML = `<header class="print-bar">
@@ -119,6 +119,7 @@ export function mountPrint(root, { songs, heading, onBack }) {
       <span class="muted print-tip">Letter size · ${songs.length === 1 ? 'one song' : `${songs.length} songs, one per page`}</span>
       <button class="pill accent" data-print>${icons.print}<span>${songs.length === 1 ? 'Print' : 'Print all'}</span></button>
     </header>
+    ${browse ? '<div class="songbook-search"><label>Find a song<input type="search" data-search placeholder="Song title, e.g. Give Me Jesus"></label><label>Level<select data-level><option value="">All levels</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label><p data-results role="status"></p></div>' : ''}
     ${songs.length > 1 ? `<nav class="contents" aria-label="Songs"><h2>Songs</h2><ol>${songs.map(({ lesson, stepIndex }, i) => `<li>
       <a href="#" data-goto="${i}">${songTitle(lesson, lesson.steps[stepIndex])}</a>
       <button class="pill" data-one="${i}" aria-label="Print this song">${icons.print}<span>Print</span></button></li>`).join('')}</ol></nav>` : ''}
@@ -132,6 +133,22 @@ export function mountPrint(root, { songs, heading, onBack }) {
   // Keep the selection even if afterprint arrives before the preview settles.
   // A one-song view needs no temporary CSS selection or event-based reset.
   const pages = [...papers.children];
+  if (browse) {
+    const search=el.querySelector('[data-search]'), level=el.querySelector('[data-level]');
+    const rows=[...el.querySelectorAll('.contents li')];
+    const normalize=text=>text.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    const filter=()=>{
+      const query=normalize(search.value);let count=0;
+      songs.forEach(({lesson,stepIndex},i)=>{
+        const matches=(!level.value||lesson.course===level.value)&&normalize(songTitle(lesson,lesson.steps[stepIndex])).includes(query);
+        pages[i].hidden=!matches;if(rows[i])rows[i].hidden=!matches;if(matches)count++;
+      });
+      el.querySelector('[data-results]').textContent=count ? `${count} song${count===1?'':'s'} found` : 'No songs found. Try another title or choose All levels.';
+      el.querySelector('[data-print]').disabled=count===0;
+      el.querySelector('.print-tip').textContent=`${count} songs · Letter size · one per page`;
+    };
+    search.addEventListener('input',filter);level.addEventListener('change',filter);filter();
+  }
   let selectedDispose = null;
   const clearSelected = () => { selectedDispose?.(); selectedDispose = null; };
   el.querySelectorAll('[data-one]').forEach((b) => b.addEventListener('click', () => {

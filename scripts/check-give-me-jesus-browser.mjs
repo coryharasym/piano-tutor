@@ -14,8 +14,17 @@ const navigate=async hash=>{await page.goto(origin+'/'+hash);await page.waitForT
 const data=()=>page.evaluate(async()=>structuredClone((await import('./js/store.js')).store.data));
 try{
  await navigate('#/');await page.waitForSelector('[data-menu]');
+ await page.locator('[data-menu]').click();await page.locator('[data-course="advanced"]').click();
  await page.locator('[data-menu]').click();await page.locator('.home-menu [data-songbook]').click();
  await page.waitForSelector('.paper h1');
+ await page.locator('[data-search]').fill('give me jesus');
+ assert.equal(await page.locator('.paper:visible').count(),1,'Search finds hymn even from Advanced');
+ assert.match(await page.locator('[data-results]').innerText(),/1 song found/);
+ await page.locator('[data-level]').selectOption('advanced');assert.equal(await page.locator('.paper:visible').count(),0);
+ assert.equal(await page.locator('[data-print]').isDisabled(),true);
+ await page.locator('[data-level]').selectOption('');
+ await page.emulateMedia({media:'print'});assert.equal(await page.locator('.paper:visible').count(),1);await page.emulateMedia({media:'screen'});
+ await page.locator('[data-search]').fill('');
  const song=page.locator('.paper').filter({has:page.getByRole('heading',{name:'Give Me Jesus',exact:true})});
  assert.equal(await song.count(),1);assert.ok(await song.locator('svg').count()>1);
  await song.screenshot({path:'/tmp/give-me-jesus-full-score.png',scale:'css'});await song.scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/give-me-jesus-songbook.png',scale:'css'});
