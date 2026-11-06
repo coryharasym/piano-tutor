@@ -77,6 +77,20 @@ for (const rate of [44100, 48000]) {
     for(let t=.2;t<=.9;t+=.08){clock+=80;l.freq=mix([48,64],t,quiet?[1,.05]:[.05,1]);accepted ||= l.chordHeard([48,64]);}
     assert.ok(accepted,`C3+E4 at 20:1 sample gain, quiet ${quiet}, ${rate}`);checks++;
   }
+  for (const played of [[55],[62],[55,62]]) {
+    const easy=makeListener();let accepted=false;
+    for(let t=.16;t<=.8;t+=.08){clock+=80;easy.freq=mix(played,t);accepted ||= easy.chordHeard([55,62],{easy:true});}
+    assert.ok(accepted,`Easy G3/D4 with recorded keys ${played}, ${rate}`);
+    easy.clearRecent();clock+=80;
+    assert.equal(easy.chordHeard([55,62],{easy:true}),false,'held chord cannot skip repeated target');
+    checks++;
+  }
+  for(const played of [[60],[59],[48]]) {
+    const easy=makeListener();
+    for(let t=.16;t<=.8;t+=.08){clock+=80;easy.freq=mix(played,t);assert.equal(easy.chordHeard([55,62],{easy:true}),false,'wrong note cannot pass Easy G/D');checks++;}
+  }
+  const flow=makeListener();
+  for(let t=.16;t<=.8;t+=.08){clock+=80;flow.freq=mix([55],t);assert.equal(flow.chordHeard([55,62],{easy:true,strict:true}),false,'Flow never accepts partial chord');}
   const held=makeListener();let accepted=false;
   for(let t=.8;t<=1.2;t+=.08){clock+=80;held.freq=mix([48,64],t,[.25,1],[0,.65]);accepted ||= held.chordHeard([48,64]);}
   assert.ok(accepted,`sustained C3 beneath fresh E4, ${rate}`);checks++;

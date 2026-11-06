@@ -830,6 +830,7 @@ function renderPlay(step, ctx) {
       kb.flash(midi, 'press');
       chordCoach.update(m.items.map(it => it.midi), {}, { revealTargets: showTargets });
       if (chordCoach.takeNote(midi)) {
+        listener.consumeChord?.(m.items.map(it => it.midi));
         assistedChords++;
         m.items.forEach(it => kb.flash(it.midi, 'good'));
         if (step.timed && startedAt == null) startedAt = performance.now();
@@ -928,10 +929,11 @@ function renderPlay(step, ctx) {
       chordCoach.update([], {}, { active: false }); return;
     }
     const midis = m.items.map((it) => it.midi);
-    if (chordCoach.assisted || chordCoach.easy) { chordCoach.update(midis, {}, { revealTargets: showTargets }); return; }
-    const heardChord = listener.chordHeard(midis);
+    if (chordCoach.assisted) { chordCoach.update(midis, {}, { revealTargets: showTargets }); return; }
+    const heardChord = listener.chordHeard(midis, { easy: chordCoach.easy });
     chordCoach.update(midis, listener.chordStatus, { revealTargets: showTargets });
     if (heardChord) {
+      if (chordCoach.easy) assistedChords++;
       if (step.timed && startedAt == null) startedAt = performance.now();
       if (expressive) m.items.forEach(item => heard.push({ t: performance.now(), item, dyn: dynAt[mi] }));
       m.items.forEach((it) => kb.flash(it.midi, 'good'));
