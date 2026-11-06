@@ -12,6 +12,7 @@ import ux from './unitx.js';
 import { RECITALS, PIECES } from './recitals.js';
 import { DOXOLOGY_LESSONS } from './doxology.js';
 import { PRACTICE_SONGS } from './songs.js';
+import { BRIDGES } from './bridges.js';
 import { GIVE_ME_JESUS } from './give-me-jesus.js';
 
 import { chooseRecital as chooseBeginnerRecital } from './recitals.js';
@@ -24,8 +25,8 @@ export function chooseRecital(unit, piece) {
 // Each unit ends with its recital. Unit ids stay put when units are added,
 // so saved progress still matches; the number shown is the position here.
 // The Doxology lessons and practice songs slot in after the lesson each one builds on.
-const EXTRAS = [...DOXOLOGY_LESSONS, ...PRACTICE_SONGS];
-const withExtras = (u) => u.lessons.flatMap((l) => [l, ...EXTRAS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
+const EXTRAS = [...DOXOLOGY_LESSONS, ...PRACTICE_SONGS, ...BRIDGES];
+const withExtras = (u) => u.lessons.flatMap((l) => [...EXTRAS.filter(d=>d.unit===u.id&&d.before===l.id).map(d=>d.lesson), l, ...EXTRAS.filter((d) => d.unit === u.id && d.after === l.id).map((d) => d.lesson)]);
 export const BEGINNER_UNITS = [u1, u2, u3, u4, ux, u5, u6].map((u, i) => ({ ...u, course: 'beginner', number: i + 1, lessons: [...withExtras(u), RECITALS[u.id]] }));
 export const UNITS = [...BEGINNER_UNITS, ...INTERMEDIATE_UNITS, ...ADVANCED_UNITS];
 export const courseUnits = (course = 'beginner') => course === 'advanced' ? ADVANCED_UNITS : course === 'intermediate' ? INTERMEDIATE_UNITS : BEGINNER_UNITS;

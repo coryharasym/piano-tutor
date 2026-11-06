@@ -189,7 +189,7 @@ export const skillLessons = SKILLS.map(group=>group.map(([id,title,summary,body,
 const upAndDown=(notes,fingers)=>[...notes.map((n,i)=>`${n}/${i===notes.length-1&&notes.length>8?'q':'8'}/${fingers[i]}`),...notes.slice(0,-1).reverse().map((n,i)=>`${n}/${i===notes.length-2?(notes.length>8?'q.':'q'):'8'}/${fingers[notes.length-2-i]}`)].join(' ');
 const majorKeys=[
  ['G',['G3','A3','B3','C4','D4','E4','F#4','G4','A4','B4','C5','D5','E5','F#5','G5'],[1,2,3,1,2,3,4,1,2,3,1,2,3,4,5]],
- ['F',['F3','G3','A3','Bb3','C4','D4','E4','F4','G4','A4','Bb4','C5','D5','E5','F5'],[1,2,3,4,1,2,3,1,2,3,4,1,2,3,4]],
+ ['F',['F3','G3','A3','Bb3','C4','D4','E4','F4','G4','A4','Bb4','C5','D5','E5','F5'],[1,2,3,4,1,2,3,4,1,2,3,1,2,3,4]],
  ['D',['D4','E4','F#4','G4','A4','B4','C#5','D5','E5','F#5','G5','A5','B5','C#6','D6'],[1,2,3,1,2,3,4,1,2,3,1,2,3,4,5]],
  ['Bb',['Bb3','C4','D4','Eb4','F4','G4','A4','Bb4','C5','D5','Eb5','F5','G5','A5','Bb5'],[2,1,2,3,1,2,3,4,1,2,3,1,2,3,4]],
 ];
@@ -197,3 +197,12 @@ const majorLesson=skillLessons[1][0];majorLesson.steps.splice(-1,0,...majorKeys.
 majorLesson.steps.splice(-1,0,p('C major, left hand','Use 1 at the middle C, cross 4 to D above it, and reverse the same route.',null,upAndDown(['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'],[5,4,3,2,1,3,2,1,4,3,2,1,3,2,1])));
 const minorLesson=skillLessons[1][1];
 for(const [key,notes]of [['Am',['A3','B3','C4','D4','E4','F4','G#4','A4']],['Dm',['D4','E4','F4','G4','A4','Bb4','C#5','D5']],['Em',['E4','F#4','G4','A4','B4','C5','D#5','E5']]])minorLesson.steps.splice(-1,0,p(key+' harmonic minor','Use the raised seventh in both directions. Keep the wider step relaxed.',upAndDown(notes,[1,2,3,1,2,3,4,5]),null,{key}));
+
+// Explicit left-hand models complement the existing right-hand scale studies.
+majorLesson.steps.push({t:'read',title:'Left-hand scale plans',body:'<p>Learn one octave in the left hand before joining two. In G, F and D major use 5 4 3 2 1, then cross 3 over to the next note and continue 2 1. Descend by reversing the route: 1 2 3, thumb under to the next note, then 2 3 4 5. Keep the forearm moving with the hand. B-flat starts on finger 3 and has its own pattern; do not force C fingering onto it.</p>'});
+for(const [key,notes,fingers] of [
+ ['G',['G2','A2','B2','C3','D3','E3','F#3','G3'],[5,4,3,2,1,3,2,1]],
+ ['F',['F2','G2','A2','Bb2','C3','D3','E3','F3'],[5,4,3,2,1,3,2,1]],
+ ['D',['D3','E3','F#3','G3','A3','B3','C#4','D4'],[5,4,3,2,1,3,2,1]],
+ ['Bb',['Bb2','C3','D3','Eb3','F3','G3','A3','Bb3'],[3,2,1,4,3,2,1,3]],
+])majorLesson.steps.push(p(key+' major: left-hand map','Say the finger numbers before starting. Practise the crossing pair alone, then join the whole octave in both directions.',null,upAndDown(notes,fingers),{key,showFingers:true,tempo:60}));

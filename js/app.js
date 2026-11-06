@@ -17,6 +17,8 @@ import { mountPrint, printOne, songbook } from './print.js';
 import { mountSheet } from './sheet.js';
 import { mountNotes } from './notes.js';
 import { showCalibration, calibrationCount } from './calibration.js';
+import { mountMusicianship, restoreLab } from './musicianship.js';
+import { recordAttempt, ratePractice } from './learning.js';
 import { ChordCoach } from './chord-coach.js';
 import { mountSession, mountPieces, mountTechnique, sessionDock } from './workspace.js';
 import { savePiece, savedPiece, visitPiece, escapeHTML, rememberSettings } from './personal.js';
@@ -37,6 +39,8 @@ window.addEventListener('hashchange', route);
 function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
+  if(view==='musicianship'){keepAwake(false);disposers.push(mountMusicianship(app,{go,onBack:()=>go('#/'),kind:id}));return;}
+  if(id&&/^(int-|adv-)?lab-/.test(id)&&!findLesson(id))restoreLab(id);
   if (view === 'session' || view === 'pieces' || view === 'technique') {
     keepAwake(false);
     const options={go,onBack:()=>go('#/')};
@@ -246,7 +250,7 @@ function showHomeMenu(onClose) {
         <button class="menu-link" data-notes>Chapter notes<small>Read or download lesson summaries</small></button>
         <button class="menu-link" data-technique>Technique videos<small>Demonstrations from piano teachers</small></button>
       </section>
-      <section><h3>Practice tools</h3>
+      <section><h3>Practice tools</h3><button class="menu-link" data-musicianship>Musicianship<small>Rhythm, ears, reading, recording and review</small></button>
         <button class="menu-link" data-free>Free play</button>
         <button class="menu-link" data-metronome>Metronome</button>
         <button class="menu-link" data-drill ${readingReady?'':'disabled'}>Reading drill${readingReady?'':'<small>Unlocks after Treble reading</small>'}</button>
@@ -262,7 +266,7 @@ function showHomeMenu(onClose) {
   $('[data-close]',dlg).addEventListener('click',close);
   dlg.addEventListener('click',e=>{if(e.target===dlg)close();});
   dlg.querySelectorAll('[data-course]').forEach(b=>b.addEventListener('click',()=>{store.setting('course',b.dataset.course);close();route();}));
-  const routes={'data-songbook':'#/songbook','data-notes':'#/notes/'+info.notes,'data-technique':'#/technique','data-free':'#/free','data-metronome':'#/metronome','data-drill':'#/lesson/drill/0','data-daily':'#/lesson/daily/0'};
+  const routes={'data-musicianship':'#/musicianship','data-songbook':'#/songbook','data-notes':'#/notes/'+info.notes,'data-technique':'#/technique','data-free':'#/free','data-metronome':'#/metronome','data-drill':'#/lesson/drill/0','data-daily':'#/lesson/daily/0'};
   for(const [attribute,hash]of Object.entries(routes))$(`[${attribute}]`,dlg).addEventListener('click',()=>{close();go(hash);});
   $('[data-settings]',dlg).addEventListener('click',()=>{close();showSettings();});
   $('[data-calibrate]',dlg).addEventListener('click',()=>{close();showCalibration();});
@@ -684,6 +688,7 @@ function renderPlay(step, ctx) {
     <div class="chord-coach" hidden></div>
   </div>`);
   ctx.stage.appendChild(el);
+  if(step.chordPlan){const chart=h('<p class="chord-plan"></p>');chart.textContent='Chord plan: '+step.chordPlan;$('.play-head',el).appendChild(chart);}
   const kbWrap = h('<div class="kb-wrap"></div>');
   ctx.el.appendChild(kbWrap);
 
@@ -715,6 +720,7 @@ function renderPlay(step, ctx) {
   let demoAt = null; // the moment the Listen demo is playing
   let startedAt = null; // timed drills: when the first note was played
   let showTargets = step.hint !== false;
+  let usedHint = showTargets;
   let finished = false;
   let assistedChords = 0;
   let userPaused = false;
@@ -732,6 +738,7 @@ function renderPlay(step, ctx) {
   const instruction=h('<p class="compact-instruction"></p>');instruction.textContent=step.say||'';
   $('.secondary-tools',more).prepend(instruction);
   if(!step.anyNote){const restart=h(`<button class="pill" data-restart>${icons.restart} Start again</button>`);$('.secondary-tools',more).appendChild(restart);}
+  const recordLink=h('<button class="pill" data-record-practice>Record and listen</button>');recordLink.onclick=()=>go('#/musicianship/record');$('.secondary-tools',more).appendChild(recordLink);
   more.querySelector('[data-my-pieces]').onclick=()=>go('#/pieces');personalTools.appendChild(more);
   disposers.push(bindPracticeMenu(more));
 
@@ -742,6 +749,9 @@ function renderPlay(step, ctx) {
   function drawMusic() {
     const alongLabel=$('[data-along] span',el);
     if(alongLabel)alongLabel.textContent=standPrefs?.enabled?(window.matchMedia('(orientation:landscape) and (max-height:460px)').matches?'Passage':'Passage practice'):'Play along';
+    if (step.ear && !showTargets) {
+      music.innerHTML='<p class="ear-prompt">Listen, then copy the short phrase. The answer is hidden. Use Show me if you need a hint.</p>';return;
+    }
     if (step.anyNote) {
       music.innerHTML = `<div class="big-prompt">${finished ? 'Heard you!' : 'Play any key'}</div>`;
       return;
@@ -821,6 +831,7 @@ function renderPlay(step, ctx) {
     userPaused=false;
     pauseBtn.textContent='Pause';
     assistedChords = 0;
+    usedHint=step.hint!==false;
     listener.clearRecent();
     chordCoach.reset();
     feedback.textContent = '';
@@ -927,6 +938,11 @@ function renderPlay(step, ctx) {
       feedback.append(' ', again);
     }
     drawMusic(); paintTargets(); paintReps();
+    const learningCourse=ctx.lesson.course||store.setting('course');
+    recordAttempt(learningCourse,ctx.lessonId,ctx.stepIndex,assistedChords>0||usedHint);
+    const reflection=h('<div class="practice-confidence"><span>How did it feel?</span><button class="pill" data-confidence="work">Needs work</button><button class="pill" data-confidence="comfortable">Comfortable</button></div>');
+    reflection.querySelectorAll('[data-confidence]').forEach(button=>button.onclick=()=>{ratePractice(learningCourse,ctx.lessonId,ctx.stepIndex,button.dataset.confidence==='comfortable');reflection.querySelector('span').textContent='Saved for review';reflection.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));});
+    feedback.appendChild(reflection);
     ctx.complete();
     el.classList.add('success');
     setTimeout(() => el.classList.remove('success'), 1200);
@@ -991,7 +1007,7 @@ function renderPlay(step, ctx) {
     demo = playDemo(practice, (step.tempo || 80) * listenSpeed, step.metronome || step.song, (i) => {
       demoAt = i >= 0 ? i : null;
       drawMusic();
-      if (i >= 0) moments[i].items.forEach((it) => kb.flash(it.midi, 'press'));
+      if (i >= 0 && (!step.ear || showTargets)) moments[i].items.forEach((it) => kb.flash(it.midi, 'press'));
     }, step.time);
     demo.done.then(() => { if (demo) stopDemo(); });
   });
@@ -1001,7 +1017,7 @@ function renderPlay(step, ctx) {
   $('[data-verse]', el)?.addEventListener('click', () => { store.setting('verse', (verseOf(step) % verseCount(step)) + 1); route(); });
   $('[data-print]', el)?.addEventListener('click', () => go(ctx.playAlong.replace('#/play/', '#/print/')));
   $('[data-restart]', el)?.addEventListener('click', () => { rep = 0; showTargets = step.hint !== false; reset(); });
-  $('[data-hint]', el)?.addEventListener('click', () => { showTargets = true; paintTargets(); });
+  $('[data-hint]', el)?.addEventListener('click', () => { usedHint=true;showTargets = true; paintTargets(); if(step.ear)drawMusic(); });
 
   // Redraw sheet music when the size changes (e.g. rotating the phone).
   if (step.staff || standPrefs) {

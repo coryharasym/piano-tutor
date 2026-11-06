@@ -12,6 +12,11 @@ function shell(root,title,onBack) {
 const targetLabel = target => {
   const f=target&&findLesson(target.lesson);return f ? `${f.lesson.title} · ${f.lesson.steps[target.step]?.title || 'Continue'}` : target?.lesson==='warmup'?'Gentle, familiar patterns':'';
 };
+function musicianMinute(main,go) {
+ const topics=['ear','rhythm','sight'],topic=topics[new Date().getDay()%3];
+ const section=node(`<section class="workspace-card"><h2>A minute of musicianship</h2><p>${topic==='ear'?'Listen and copy a short phrase':topic==='rhythm'?'Count and tap before adding pitches':'Preview a fresh, easy reading phrase'}. Use this as part of your review time.</p><button class="pill" data-musician>Start ${topic==='ear'?'ear practice':topic==='rhythm'?'rhythm practice':'fresh reading'}</button></section>`);
+ section.querySelector('button').onclick=()=>go('#/musicianship/'+topic);main.appendChild(section);
+}
 export function mountSession(root,{go,onBack}) {
   const course=validCourse(store.setting('course'));
   const session=store.data.sessions?.[course];
@@ -25,13 +30,14 @@ export function mountSession(root,{go,onBack}) {
     main.innerHTML=`<section class="workspace-card"><span class="eyebrow">Make time for music</span><h2>How much time do you have?</h2><p>Suggested pacing, with no countdown. Repeat a section or finish early whenever you like.</p><div class="session-lengths">${Object.keys(SESSION_MINUTES).map(m=>`<button class="btn ${m==='15'?'primary':''}" data-minutes="${m}">${m} minutes</button>`).join('')}</div></section>
     <p class="muted">Warm-up → Review → Current learning → A familiar piece</p>
     ${store.data.nextPractice?.[course]?.note?`<section class="workspace-card"><h2>For next time</h2><p class="personal-note">${esc(store.data.nextPractice[course].note)}</p></section>`:''}`;
-    main.querySelectorAll('[data-minutes]').forEach(b=>b.onclick=()=>{startSession(course,b.dataset.minutes);redraw();});return;
+    main.querySelectorAll('[data-minutes]').forEach(b=>b.onclick=()=>{startSession(course,b.dataset.minutes);redraw();});musicianMinute(main,go);return;
   }
   const completed=session.stages.filter(s=>s.status==='done').length;
   main.innerHTML=`<p>${session.minutes}-minute plan · ${completed} of 4 sections practised</p><p class="muted">The times are suggestions. Opening a section does not mark it complete.</p>
   ${store.data.nextPractice?.[course]?.note?`<p class="personal-note"><b>Remember:</b> ${esc(store.data.nextPractice[course].note)}</p>`:''}
   <div class="session-stages">${session.stages.map((s,i)=>`<section class="workspace-card session-stage" data-stage="${i}"><div><span class="eyebrow">${s.minutes} ${s.minutes===1?'minute':'minutes'} suggested · ${s.status==='done'?'Done':s.status==='skipped'?'Skipped':'Ready'}</span><h2>${i+1}. ${s.title}</h2><p class="muted">${esc(s.target?targetLabel(s.target):s.empty)}</p></div><div class="workspace-actions">${s.target?`<button class="btn primary" data-open="${i}">${session.opened===i?'Return to section':'Open section'}</button>`:i===3?'<button class="pill" data-pieces>Choose a piece</button>':'<button class="pill" data-lessons>Browse lessons</button>'}<button class="pill" data-done="${i}" ${s.target?'':'disabled'}>${s.status==='done'?'Repeat section':'Mark done'}</button><button class="text-btn" data-skip="${i}">${s.status==='skipped'?'Include again':'Skip'}</button></div></section>`).join('')}</div>
   <section class="workspace-card"><h2>What should you return to next time?</h2><label class="field">A small goal or reminder<textarea data-reflection maxlength="1000" rows="3" placeholder="For example: keep the left hand steady in bars 5–8"></textarea></label><label class="field">Lesson or passage to revisit<select data-revisit><option value="">Continue my current lesson</option>${session.stages.filter(s=>playable(s.target)).map(s=>`<option value="${esc(JSON.stringify(s.target))}">${esc(targetLabel(s.target))}</option>`).join('')}</select></label><p class="muted small">Saved passage loops stay with pieces in My Pieces. Finishing a session does not award lesson or recital completion.</p><button class="btn primary" data-finish>${completed===4?'Finish practice':'Finish for today'}</button></section>`;
+  musicianMinute(main,go);
   const reflection=main.querySelector('[data-reflection]');reflection.value=session.reflection||'';
   reflection.oninput=()=>{session.reflection=reflection.value;store.save();};
   const revisit=main.querySelector('[data-revisit]');revisit.value=session.revisit||'';

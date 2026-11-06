@@ -133,13 +133,13 @@ export default {
         },
         {
           t: 'read', title: 'Twinkle, Twinkle',
-          body: `<p>Mozart wrote a famous set of variations on this melody. It needs one note beyond C position: <b>A</b>. Here's the trick: put your thumb on C, then let your fingers spread so that <b>4 lands on G and 5 on A</b>.</p>
-          <p>Later in the song your thumb moves to D. Read the finger numbers on the keyboard.</p>`,
+          body: `<p>Mozart wrote a famous set of variations on this melody. It needs one note beyond C position: <b>A</b>. Begin with your thumb on C and finger 5 on G. After the two Gs, <b>release and move the whole hand one white key to the right</b>: thumb on D, finger 5 on A. The following G uses finger 4. Do not keep your thumb anchored on C and stretch.</p>
+          <p>Return your thumb to C for the final C of the phrase. The middle section uses D position (G with 4, F with 3, E with 2, D with 1); move there before starting it. Pause freely between groups while learning these shifts. The goal is a relaxed move, then a steady phrase.</p>`,
         },
         {
           t: 'play', title: 'Twinkle, Twinkle, Little Star', song: true,
           say: 'Count 1 2 3 4 in every bar. Hold the half notes for two beats.',
-          rh: 'C4/q/1 C4/q/1 G4/q/4 G4/q/4 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1 G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 C4/q/1 C4/q/1 G4/q/4 G4/q/4 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1',
+          rh: 'C4/q/1 C4/q/1 G4/q/5 G4/q/5 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1 G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 C4/q/1 C4/q/1 G4/q/5 G4/q/5 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1',
           lyrics: 'Twin- kle, twin- kle, lit- tle star, / how I won- der what you are! / Up a- bove the world so high, / like a dia- mond in the sky. / Twin- kle, twin- kle, lit- tle star, / how I won- der what you are!',
           staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 100,
         },
@@ -277,7 +277,7 @@ export default {
         {
           t: 'play', title: 'Twinkle, with a repeat', song: true,
           say: '"Up above the world so high, like a diamond in the sky" is the same music twice, so it\'s written once with repeat signs.',
-          rh: 'C4/q/1 C4/q/1 G4/q/4 G4/q/4 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1 |: G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 :| C4/q/1 C4/q/1 G4/q/4 G4/q/4 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1',
+          rh: 'C4/q/1 C4/q/1 G4/q/5 G4/q/5 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1 |: G4/q/4 G4/q/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/h/1 :| C4/q/1 C4/q/1 G4/q/5 G4/q/5 A4/q/5 A4/q/5 G4/h/4 F4/q/3 F4/q/3 E4/q/2 E4/q/2 D4/q/1 D4/q/1 C4/h/1',
           lyrics: 'Twin- kle, twin- kle, lit- tle star, / how I won- der what you are! / Up a- bove the world so high, / like a dia- mond in the sky. / Twin- kle, twin- kle, lit- tle star, / how I won- der what you are!',
           staff: true, names: false, range: ['C4', 'C5'], keyLabels: 'c', tempo: 100,
         },

@@ -9,6 +9,8 @@ import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
+import {courseForLesson} from './courses.js';
+import {recordAttempt} from './learning.js';
 import { ChordCoach } from './chord-coach.js';
 import { mountStandTools, renderStandScore, bindPracticeMenu } from './music-stand.js';
 import { savedPiece, rememberSettings, savePiece } from './personal.js';
@@ -327,6 +329,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
 
   function finish() {
     finished = true;
+    if(lessonId)recordAttempt(courseForLesson(lessonId),lessonId,stepIndex,assistedChords>0||prefs.hand!=='both');
     const hits = items.filter((it) => it.state === 'hit').length;
     const total = mine().length;
     piano.chime();

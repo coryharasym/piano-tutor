@@ -4,8 +4,8 @@ import {buildPractice} from '../js/practice.js';
 import {parseSeq} from '../js/theory.js';
 const lessons=courseUnits().find(u=>u.id==='u3').lessons;
 const at=lessons.findIndex(l=>l.id==='hand-position-shifts');
-assert.equal(lessons[at-1].id,'counting');assert.equal(lessons[at+1].id,'doxology-3');
-assert.equal(nextLesson({},'counting').id,'hand-position-shifts');
+assert.equal(lessons[at-1].id,'grand-staff');assert.equal(lessons[at+1].id,'counting');
+assert.equal(nextLesson({},'grand-staff').id,'hand-position-shifts');
 const lesson=lessons[at];assert.equal(lesson.steps.length,5);
 assert.match(lesson.steps[0].body,/Do not anchor/);assert.match(lesson.steps[0].fig,/fingers 1 2 3 4 5/);
 for(const step of lesson.steps.filter(s=>s.t==='play')) {

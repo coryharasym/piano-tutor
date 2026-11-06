@@ -1,0 +1,13 @@
+.lab-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.lab-grid button { text-align:left; color:var(--ink); }
+.lab-grid b,.lab-grid small { display:block; }.lab-grid small { color:var(--ink-soft); margin-top:6px; }
+.lab-actions,.practice-confidence { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0; }
+.practice-confidence { justify-content:center; font-size:.8rem; }.practice-confidence .pill { min-height:32px; }
+.ear-prompt { padding:18px; text-align:center; font-size:1.1rem; }
+.rhythm-cells { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin:12px 0; }
+.rhythm-cells span { padding:8px; text-align:center; border:1px solid var(--line); border-radius:8px; color:var(--ink-soft); }
+.rhythm-cells .on { background:var(--accent-soft); color:var(--ink); }
+.rhythm-tap { display:block; width:min(100%,480px); min-height:80px; margin:16px auto; border:2px solid var(--accent); border-radius:16px; background:var(--accent-soft); font-size:1.5rem; font-weight:700; touch-action:manipulation; }
+[data-take] { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:16px; }[data-take] audio { max-width:100%; }
+.chord-plan { flex-basis:100%; margin:0; font-size:.85rem; font-weight:650; color:var(--accent); }
+@media(orientation:landscape) and (max-height:460px) { .practice-confidence { margin:2px 0; }.practice-confidence .pill { padding:2px 8px; min-height:28px; }.ear-prompt { padding:8px; font-size:.9rem; }.musicianship .workspace-head { position:sticky; top:0; background:var(--bg); z-index:2; } }

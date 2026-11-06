@@ -76,7 +76,7 @@ export const DOXOLOGY_LESSONS = [
     },
   },
   {
-    unit: 'u3', after: 'counting',
+    unit: 'u3', before: 'counting',
     lesson: {
       id: 'hand-position-shifts', title: 'Moving your hand to a new position',
       summary: 'Move your whole hand, then find the next notes without stretching.',
@@ -87,7 +87,7 @@ export const DOXOLOGY_LESSONS = [
         {t:'play',title:'Find the lower five-note position',say:'Set your right thumb on A below Middle C before starting. Play A B C D E and back. Fingers 1 2 3 4 5, then 4 3 2 1. Keep each finger near its key.',rh:'A3/q/1 B3/q/2 C4/q/3 D4/q/4 E4/q/5 D4/q/4 C4/q/3 B3/q/2 A3/w/1',staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60},
         {t:'play',title:'Release, move, and settle',say:'Start with your thumb on Middle C. After the long C, release and move your thumb down to A. Play A B C D E. Then release, return your thumb to Middle C, and play C D E F G C. Pause freely at each move in this exercise. Say the next thumb note before you move.',rh:'C4/w/1 A3/q/1 B3/q/2 C4/q/3 D4/q/4 E4/w/5 C4/q/1 D4/q/2 E4/q/3 F4/q/4 G4/w/5 C4/w/1',staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60},
         {t:'play',title:'Prepare the Doxology phrase',say:'Before playing, settle into A B C D E position: thumb on A below Middle C and finger 3 on Middle C. Play C D E D C A B C using 3 4 5 4 3 1 2 3. Every note is now under one of your five fingers.',rh:C3,staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60,reps:2},
-        {t:'read',title:'Plan the next position',body:`<p>Before the next lesson, practise the move silently once more. For <b>“Praise Him above”</b>, use thumb on A below Middle C and finger 3 on Middle C. Before <b>“Praise Father, Son”</b>, release and return to C position: thumb on Middle C and finger 5 on G.</p><p>In the whole melody, prepare the A position between lines 2 and 3, and return to C position between lines 3 and 4. At first, stop between phrases, release, look, move, and settle. Once the moves feel comfortable, make the gaps smaller while keeping the written notes their full length.</p>`},
+        {t:'read',title:'Plan the next position',body:`<p>Practise the move silently once more. You will use it in the Doxology later in this chapter. For <b>“Praise Him above”</b>, use thumb on A below Middle C and finger 3 on Middle C. Before <b>“Praise Father, Son”</b>, release and return to C position: thumb on Middle C and finger 5 on G.</p><p>In the whole melody, prepare the A position between lines 2 and 3, and return to C position between lines 3 and 4. At first, stop between phrases, release, look, move, and settle. Once the moves feel comfortable, make the gaps smaller while keeping the written notes their full length.</p>`},
       ],
     },
   },
