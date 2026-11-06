@@ -42,7 +42,7 @@ try {
   await assist.waitFor({state:'visible',timeout:7000});await assist.click();await pair(48,64);
   await page.waitForFunction(()=>document.querySelector('.chord-readout')?.textContent.includes('G3'));
   await assist.waitFor({state:'visible',timeout:7000});await assist.click();await pair(55,62);
-  assert.match(await page.locator('.feedback').innerText(),/separate-note assistance/);
+  assert.match(await page.locator('.feedback').innerText(),/chord assistance/);
   assert.equal(await page.evaluate(async()=>{const {store}=await import('./js/store.js');return store.data.best?.['chord-check-time'];}),undefined,'assisted practice cannot set a speed record');
 
   await page.evaluate(()=>location.hash='#/play/chord-check/0');
@@ -61,7 +61,7 @@ try {
   await assist.waitFor({state:'visible',timeout:7000});await assist.click();await pair(48,64);
   await assist.waitFor({state:'visible',timeout:7000});await assist.click();await pair(55,62);
   await page.waitForSelector('.fall-msg.show');
-  assert.match(await page.locator('.fall-msg').innerText(),/separate-note assistance on 3 chords/);
+  assert.match(await page.locator('.fall-msg').innerText(),/chord assistance on 3 chords/);
   assert.match(await page.locator('.fall-msg h2').innerText(),/Practice complete/);
 
   // Flow has diagnostic feedback but no separate-note bypass.
@@ -82,6 +82,44 @@ try {
   await page.screenshot({path:'/tmp/chord-octave-phone.png'});
   await page.evaluate(async()=>{const {listener}=await import('./js/listen.js');listener.active=false;});
   await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===true);
+  // Easy mode uses one new expected mic event, persists, and leaves Flow strict.
+  await page.evaluate(async()=>{const {listener}=await import('./js/listen.js');listener.active=true;location.hash='#/lesson/chord-check/0';});
+  const easy=page.locator('[data-chord-easy]');
+  await easy.waitFor({state:'visible'}); await easy.click();
+  assert.match(await readout.innerText(),/Easy chords: play any one/);
+  await emit([60]); assert.equal(await page.locator('.chip.done').count(),0,'wrong note cannot pass');
+  await page.evaluate(async()=>{const {listener}=await import('./js/listen.js');listener.muteUntil=performance.now()+500;});
+  await emit([48]); assert.equal(await page.locator('.chip.done').count(),0,'app playback cannot pass');
+  await page.waitForTimeout(550); await emit([48]);
+  assert.equal(await page.locator('.chip.done').count(),1,'bass alone passes');
+  await page.waitForTimeout(200);
+  assert.equal(await page.locator('.chip.done').count(),1,'stale spectrum cannot pass next chord');
+  await emit([64]); assert.equal(await page.locator('.chip.done').count(),2,'melody alone passes repeated chord');
+  await emit([62]); assert.match(await page.locator('.feedback').innerText(),/chord assistance/);
+  assert.equal(await page.evaluate(async()=>{const {store}=await import('./js/store.js');return store.data.best?.['chord-check-time'];}),undefined);
+  await page.reload();
+  assert.equal(await page.evaluate(async()=>{const {store}=await import('./js/store.js');return store.setting('easyChords');}),true,'easy choice survives reload');
+  await page.evaluate(async()=>{
+    const {addLesson}=await import('./js/lessons/index.js');
+    addLesson({id:'practice',title:'Microphone practice'},{id:'easy-check',title:'Easy chords',steps:[{t:'play',title:'Chords',rh:'E4/q E4/q D4/h',lh:'C3/q C3/q G3/h',tempo:160,song:true,range:['C3','G4']}]});
+    const {listener}=await import('./js/listen.js');listener.active=true;listener.muteUntil=0;
+    listener.chordHeard=()=>false;
+    const {piano}=await import('./js/audio.js');piano.play=()=>({stop(){}});piano.chime=()=>{};
+    const {store}=await import('./js/store.js');store.setting('playMode','wait');location.hash='#/play/easy-check/0';
+  });
+  await easy.waitFor({state:'visible'});
+  await emit([60]);assert.equal(await page.locator('.score').innerText(),'0 of 6');
+  await page.locator('[data-pause]').click(); await emit([48]);
+  assert.equal(await page.locator('.score').innerText(),'0 of 6','paused easy mode cannot advance');
+  await page.locator('[data-pause]').click();
+  await emit([48]);await emit([64]);await emit([55]);
+  await page.waitForSelector('.fall-msg.show');
+  assert.match(await page.locator('.fall-msg').innerText(),/Passage completed, with chord assistance on 3 chords/);
+  assert.doesNotMatch(await page.locator('.fall-msg').innerText(),/All 6 notes/);
+  await page.locator('[data-mode] [data-v="flow"]').click();
+  await page.waitForFunction(()=>document.querySelector('.chord-coach')?.hidden===false);
+  assert.equal(await easy.isVisible(),false,'Flow hides easy option even when saved on');
+  await emit([48]);assert.equal(await page.locator('.score').innerText(),'0 / 6');
   assert.deepEqual(errors,[]);
   console.log('Lesson and Wait assistance, note order, repeated chords, honest completion, Flow/pause guards and four viewport layouts passed');
 } finally { await browser.close();await new Promise(r=>server.close(r)); }

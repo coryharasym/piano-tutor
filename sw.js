@@ -1,6 +1,6 @@
 // Network first, falling back to cache, so lessons work offline after one visit
 // and updates show up as soon as you're online.
-const CACHE = 'piano-tutor-v21';
+const CACHE = 'piano-tutor-v22';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));

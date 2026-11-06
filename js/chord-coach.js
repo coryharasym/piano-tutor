@@ -3,16 +3,23 @@ import { midiToName } from './theory.js';
 // Shared lesson/Wait-mode assistance. Sequential practice is an explicit
 // choice, never silently scored as simultaneous chord detection.
 export class ChordCoach {
-  constructor(root, { onChange = () => {}, clock = () => performance.now(), levelSource } = {}) {
+  constructor(root, { onChange = () => {}, clock = () => performance.now(), levelSource, getEasy = () => false, setEasy = () => {} } = {}) {
     this.root = root;
     this.clock = clock;
     this.onChange = onChange;
     this.levelSource = levelSource;
+    this.getEasy = getEasy; this.setEasy = setEasy;
     this.onLevel = level => this.observeLevel(level, Math.max(0.003, (levelSource?.tracker?.noiseFloor || 0.002) * 3.5));
     levelSource?.onLevel?.add(this.onLevel);
-    root.innerHTML = '<span class="chord-readout" role="status" aria-live="polite"></span><button class="pill" data-chord-assist hidden>Play notes separately</button>';
+    root.innerHTML = '<span class="chord-readout" role="status" aria-live="polite"></span><button class="pill" data-chord-assist hidden>Play notes separately</button><button class="pill" data-chord-easy hidden>Easy chords: off</button>';
     this.readout = root.querySelector('.chord-readout');
     this.button = root.querySelector('[data-chord-assist]');
+    this.easyButton = root.querySelector('[data-chord-easy]');
+    this.easyButton.addEventListener('click', () => {
+      this.setEasy(!this.getEasy());
+      this.assisted = false; this.index = 0; this.needsRelease = false;
+      this.onChange(); this.paint();
+    });
     this.button.addEventListener('click', () => {
       this.assisted = !this.assisted;
       this.index = 0;
@@ -50,7 +57,9 @@ export class ChordCoach {
   paint() {
     const name = m => midiToName(m).replace('#', '♯');
     let text;
-    if (this.assisted) {
+    if (this.easy) {
+      text = this.revealTargets ? `Easy chords: play any one of ${this.notes.map(name).join(' or ')}. Assisted practice.` : 'Easy chords: play any one expected chord note. Assisted practice.';
+    } else if (this.assisted) {
       text = this.needsRelease ? `Release the key, then play ${name(this.notes[this.index])}.`
         : `Separate-note practice: ${this.notes.slice(0, this.index).map(name).join(' + ')}${this.index ? ' heard. ' : ''}Play ${name(this.notes[this.index])} next; release each key.`;
     } else if (this.needsAttack) {
@@ -64,12 +73,18 @@ export class ChordCoach {
     }
     // Do not re-announce unchanged text every 80ms to screen readers.
     if (text !== this.lastText) { this.readout.textContent = text; this.lastText = text; }
-    this.button.hidden = !this.canAssist || (!this.assisted && this.clock() - this.started < 5000);
+    this.easyButton.hidden = !this.canAssist;
+    this.easyButton.textContent = `Easy chords: ${this.easy ? 'on' : 'off'}`;
+    this.easyButton.setAttribute('aria-pressed', String(this.easy));
+    this.button.hidden = this.easy || !this.canAssist || (!this.assisted && this.clock() - this.started < 5000);
     this.button.textContent = this.assisted ? 'Try together' : 'Play notes separately';
     this.button.setAttribute('aria-pressed', String(this.assisted));
   }
 
+  get easy() { return !!this.canAssist && !!this.getEasy(); }
+
   takeNote(midi) {
+    if (this.easy) return this.notes.includes(midi);
     if (!this.assisted || this.needsRelease || midi !== this.notes[this.index]) return false;
     this.index++;
     if (this.index === this.notes.length) return true;

@@ -275,6 +275,7 @@ function showSettings() {
     <label class="row"><span>Show R and L with finger numbers<small>Which hand plays each note, beside its finger number</small></span><input type="checkbox" ${s.handLabels ? 'checked' : ''} data-hands></label>
     <label class="row"><span>Show song words<small>The lyrics of hymns and songs, as you play</small></span><input type="checkbox" ${s.lyrics ? 'checked' : ''} data-lyrics></label>
     <label class="row"><span>Accept any octave<small>Forgives the mic mishearing a note an octave off</small></span><input type="checkbox" ${s.anyOctave ? 'checked' : ''} data-oct></label>
+    <label class="row"><span>Easy chords<small>In lessons and Wait mode, one expected chord note advances. Results are marked as assisted practice.</small></span><input type="checkbox" ${s.easyChords ? 'checked' : ''} data-easy-chords></label>
     <div class="row"><span>Tune to my piano<small>${tuningText()}</small></span><button class="pill" data-tune>${icons.mic}<span>Tune</span></button></div>
     <div class="row"><span>Keyboard calibration<small>${calibrationCount() ? `${calibrationCount()} keys saved on this device. Used automatically in every lesson.` : 'Set up once here for octave pairs and chords. Your learned keys are saved.'}</small></span><button class="pill" data-calibrate>${calibrationCount() ? 'Manage setup' : 'Set up keyboard'}</button></div>
     <div class="row"><span>Back up progress<small>Save your progress to a file, or load it on another device</small></span><span class="row-btns"><button class="pill" data-backup>Back up</button><button class="pill" data-restore>Restore</button></span></div>
@@ -290,6 +291,7 @@ function showSettings() {
   $('[data-hands]', dlg).addEventListener('change', (e) => { store.setting('handLabels', e.target.checked); route(); });
   $('[data-lyrics]', dlg).addEventListener('change', (e) => { store.setting('lyrics', e.target.checked); route(); });
   $('[data-oct]', dlg).addEventListener('change', (e) => store.setting('anyOctave', e.target.checked));
+  $('[data-easy-chords]', dlg).addEventListener('change', (e) => store.setting('easyChords', e.target.checked));
   $('[data-tune]', dlg).addEventListener('click', () => { close(); showTuner(); });
   $('[data-calibrate]', dlg).addEventListener('click', () => { close(); showCalibration(); });
   $('[data-backup]', dlg).addEventListener('click', () => {
@@ -686,7 +688,7 @@ function renderPlay(step, ctx) {
   const music = $('.music', el);
   const feedback = $('.feedback', el);
   const chordHelp = $('.mic-chord-help', el);
-  const chordCoach = new ChordCoach($('.chord-coach', el), { levelSource: listener, onChange: () => listener.clearRecent() });
+  const chordCoach = new ChordCoach($('.chord-coach', el), { levelSource: listener, getEasy: () => store.setting('easyChords'), setEasy: value => store.setting('easyChords', value), onChange: () => listener.clearRecent() });
   disposers.push(() => chordCoach.dispose());
 
   let rep = 0, mi = 0;
@@ -811,7 +813,7 @@ function renderPlay(step, ctx) {
   // ---- input
   let pause = false;
   function input(midi, source) {
-    if (listener.calibrating && source === 'mic') return;
+    if (source === 'mic' && (!listener.active || listener.calibrating || performance.now() < listener.muteUntil)) return;
     if (finished || pause || userPaused) { kb.flash(midi, 'press'); return; }
     if (step.anyNote) {
       kb.flash(midi, 'good');
@@ -823,6 +825,7 @@ function renderPlay(step, ctx) {
     // Score microphone chords atomically through chordHeard instead.
     if (source === 'mic' && m.items.length > 1 && !step.anyOrder) {
       kb.flash(midi, 'press');
+      chordCoach.update(m.items.map(it => it.midi), {}, { revealTargets: showTargets });
       if (chordCoach.takeNote(midi)) {
         assistedChords++;
         m.items.forEach(it => kb.flash(it.midi, 'good'));
@@ -880,7 +883,7 @@ function renderPlay(step, ctx) {
     finished = true;
     chordCoach.reset();
     piano.chime();
-    if (assistedChords) feedback.innerHTML = `<span class="ok"><b>Practice complete</b>, with separate-note assistance. Tap ${icons.next} to continue.</span>`;
+    if (assistedChords) feedback.innerHTML = `<span class="ok"><b>Practice complete</b>, with chord assistance. Tap ${icons.next} to continue.</span>`;
     else if (step.final) feedback.innerHTML = `<span class="ok"><b>Bravo!</b> What a performance. Tap ${icons.check} to take your bow.</span>`;
     else if (!step.anyNote) feedback.innerHTML = `<span class="ok"><b>Well played!</b> Tap ${icons.next} to continue.</span>`;
     paintChordHelp();
@@ -922,7 +925,7 @@ function renderPlay(step, ctx) {
       chordCoach.update([], {}, { active: false }); return;
     }
     const midis = m.items.map((it) => it.midi);
-    if (chordCoach.assisted) { chordCoach.update(midis); return; }
+    if (chordCoach.assisted || chordCoach.easy) { chordCoach.update(midis, {}, { revealTargets: showTargets }); return; }
     const heardChord = listener.chordHeard(midis);
     chordCoach.update(midis, listener.chordStatus, { revealTargets: showTargets });
     if (heardChord) {
