@@ -56,13 +56,15 @@ export function mountNotes(root, { id = 'all', onBack }) {
   const heading = collection ? (id==='advanced'?'Advanced course notes':id==='intermediate'?'Intermediate course notes':id==='library'?'All course notes':'Beginner course notes') : `${units[0].number}. ${units[0].title}`;
   const el = document.createElement('main');
   el.className = 'notes-view';
-  el.innerHTML = `<header class="notes-bar"><button class="icon-btn" data-back aria-label="All lessons">←</button><div><span class="eyebrow">Chapter notes</span><h1>${escapeHTML(heading)}</h1></div><a class="pill accent" href="${pdfPath(id)}" download>Download PDF</a><button class="pill" data-print>Print notes</button></header>
-    <p class="notes-help">PDFs include the explanations, diagrams, practice tasks, and review checklists for ${collection ? 'these '+units.length+' chapters' : 'this chapter'}. On iPhone, open the PDF and use Share → Save to Files if needed. Full sheet music is in the Songbook.</p>
+  const pdfActions = id === 'library'
+    ? ['all','intermediate','advanced'].map(course=>`<a class="pill" href="${pdfPath(course)}" target="_blank" rel="noopener">${course==='all'?'Beginner':course==='intermediate'?'Intermediate':'Advanced'} PDF</a>`).join('')
+    : `<a class="pill accent" href="${pdfPath(id)}" download>Download PDF</a><a class="pill" href="${pdfPath(id)}" target="_blank" rel="noopener" data-print-pdf>Open PDF to print</a>`;
+  el.innerHTML = `<header class="notes-bar"><button class="icon-btn" data-back aria-label="All lessons">←</button><div><span class="eyebrow">Chapter notes</span><h1>${escapeHTML(heading)}</h1></div>${pdfActions}</header>
+    <p class="notes-help">PDFs include the explanations, diagrams, practice tasks, and review checklists for ${collection ? 'these '+units.length+' chapters' : 'this chapter'}. On iPhone, open a PDF, then use Share → Print or Share → Save to Files. ${id==='library'?'Choose a course PDF above or an individual chapter below. ':''}Full sheet music is in the Songbook.</p>
     ${collection ? `<nav class="notes-index" aria-label="Download chapters"><h2>Individual chapters</h2>${units.map(u => `<a class="pill" href="${pdfPath(u.id)}" download>${u.number}. ${escapeHTML(u.title)} · PDF</a>`).join('')}</nav>` : ''}
     <div class="notes-pages">${units.map(chapterHTML).join('')}</div>`;
   root.replaceChildren(el);
   el.querySelector('[data-back]').addEventListener('click', onBack);
-  el.querySelector('[data-print]').addEventListener('click', () => window.print());
   for (const target of el.querySelectorAll('[data-example-lesson]')) {
     const lesson = units.flatMap(chapterLessons).find(l => l.id === target.dataset.exampleLesson);
     const step = lesson.steps[Number(target.dataset.exampleStep)];
