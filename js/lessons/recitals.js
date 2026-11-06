@@ -87,7 +87,7 @@ const CLASSIC = [
         t: 'read', title: 'Your first recital',
         body: `<p>Every unit ends with a <b>recital</b>: a piece to practice and then perform from start to finish, with no hints from the keyboard.</p>
         <p>Your first piece is the opening line of the <b>Doxology</b> ("Praise God, from whom all blessings flow"). Its tune, called <b>Old Hundredth</b>, was published in Geneva in 1551 and has been sung ever since.</p>
-        <p>The first half walks <b>down</b> the white keys from Middle C: C C B A G. Then your thumb hops back to Middle C and walks <b>up</b>: C D E.</p>
+        <p>Before starting, find Middle C. Place your right ring finger (4) there: your thumb is on G below it, then A under 2 and B under 3. Practise C–B–A–G silently once. Release the whole hand before moving your thumb back to Middle C for the second group. Look at the destination first; take a pause between the groups while learning. Never stretch the thumb to C while holding the low G.</p><p>The first half walks <b>down</b> the white keys from Middle C: C C B A G. Then your thumb hops back to Middle C and walks <b>up</b>: C D E.</p>
         <p>This is the start of a longer journey: each unit adds a little more of the Doxology, until you can play the whole hymn with both hands.</p>`,
       },
       {

@@ -15,7 +15,7 @@ for(let i=0;i<source.length;i++){
 }
 assert.equal(HYMNS.filter(h=>h.id===GIVE_ME_JESUS.id).length,1);
 assert.ok(!UNITS.some(u=>u.lessons.some(l=>l.id===GIVE_ME_JESUS.id)),'Songbook addition must not change course lessons');
-assert.equal(UNITS.filter(u=>u.course==='beginner').reduce((n,u)=>n+u.lessons.length,0),95);
+assert.equal(UNITS.filter(u=>u.course==='beginner').reduce((n,u)=>n+u.lessons.length,0),96);
 assert.deepEqual(findLesson(GIVE_ME_JESUS.id).lesson,GIVE_ME_JESUS);
 const songs=songbook('beginner').filter(s=>s.lesson.id===GIVE_ME_JESUS.id);assert.equal(songs.length,1);assert.equal(songs[0].stepIndex,3);
 assert.equal(songbook('intermediate').filter(s=>s.lesson.id===GIVE_ME_JESUS.id).length,0);

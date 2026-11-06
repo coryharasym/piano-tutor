@@ -31,7 +31,7 @@ try {
   await page.waitForSelector('[data-next].ready');
  }
  await page.locator('[data-next]').click();await page.waitForSelector('.read');
- await page.locator('[data-next]').click();await page.waitForSelector('.celebrate');await page.locator('.celebrate [data-next]').click();await page.waitForFunction(()=>location.hash==='#/lesson/doxology-3/0');
+ await page.locator('[data-next]').click();await page.waitForSelector('.celebrate');await page.locator('.celebrate [data-next]').click();await page.waitForFunction(()=>location.hash==='#/lesson/counting/0');
  await page.goto(origin+'/#/notes/u3');await page.waitForSelector('.notes-lesson');
  assert.match(await page.locator('.notes-pages').innerText(),/Moving your hand to a new position/);
  assert.deepEqual(errors,[]);console.log('Position lesson diagram, all three keyboard exercises/rounds, transition into Doxology and chapter notes passed');

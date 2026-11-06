@@ -194,10 +194,10 @@ export const PRACTICE_SONGS = [
     <p>Look out for the <b>two quick notes</b> after the first rest: C and E, twice as fast as a quarter note, leading into the high G.</p>`),
     play('Sleep, Baby, Sleep', 'Thumb on Middle C. Softly. Count the rests: they are part of the music.', { rh: SLEEP, song: true, range: ['C4', 'C5'], keyLabels: 'all', names: true, tempo: 88 }),
   ]),
-  lesson('u2', 'ode-rh', 'ducklings', 'All My Little Ducklings', 'A German children\'s song that stretches up to A.', [
+  lesson('u2', 'ode-rh', 'ducklings', 'All My Little Ducklings', 'A German children\'s song with a small hand shift.', [
     read('Alle meine Entchen', `<p>Every German child learns <b>Alle meine Entchen</b>: "All my little ducklings swimming on the lake, heads down in the water, tails up in the air."</p>
-    <p>It walks up C D E F G, then needs one note beyond C position: <b>A</b>. Let your hand spread a little so finger 5 reaches A. Then it walks back down to Middle C.</p>`),
-    play('All My Little Ducklings', 'Up C D E F G G, then the As, then step down: F, E, D, C.', { rh: DUCKS, lyrics: DUCKS_W, song: true, range: ['C4', 'C5'], keyLabels: 'all', names: true, tempo: 104 }),
+    <p>It walks up C D E F G, then needs one note beyond C position: <b>A</b>. Start with thumb 1 on Middle C and play C D E F G G using 1 2 3 4 5 5. Release the second G and move your whole hand one white key right: thumb on D, pinky on A. Play the As with 5 and the Gs with 4. Stay in this position for F E D with 3 2 1, then release and move your thumb back to Middle C for the ending. Practise the moves silently first; pause freely and keep the hand relaxed.</p>`),
+    play('All My Little Ducklings', 'C position first. After G G, release and move to D position for the As. Use 3 2 1 for F E D, then release and return your thumb to C.', { rh: DUCKS, lyrics: DUCKS_W, song: true, range: ['C4', 'C5'], keyLabels: 'all', names: true, tempo: 104 }),
   ]),
   lesson('u2', 'hands-together', 'au-clair-hands', 'Au Clair de la Lune, hands together', 'The French tune in your right hand, with a left-hand bass.', [
     read('Melody and bass', `<p>You played <b>Au Clair de la Lune</b> with your left hand. Now the right hand takes the tune, and the left hand plays long low notes underneath: <b>C</b> with finger 5 and <b>G</b> with your thumb.</p>

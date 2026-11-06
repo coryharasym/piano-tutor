@@ -1,3 +1,4 @@
+import {duePractice} from './learning.js';
 // Personal practice records stay in the same device-local store and progress backup.
 import { store } from './store.js';
 import { UNITS, findLesson, nextLesson } from './lessons/index.js';
@@ -62,7 +63,8 @@ export function sessionPlan(course, minutes) {
     : next ? {lesson:next.id, step:0} : null;
   const learned = UNITS.filter(u=>u.course===course).flatMap(u=>u.lessons).filter(l=>done[l.id]&&!l.recital);
   const reviewLesson = [...learned].reverse().find(l=>l.steps.some(s=>s.t==='play'&&!s.song&&!s.anyNote));
-  const review = reviewLesson ? {lesson:reviewLesson.id, step:reviewLesson.steps.findIndex(s=>s.t==='play'&&!s.song&&!s.anyNote)} : null;
+  const due=duePractice(course).find(p=>playable(p));
+  const review = due ? {lesson:due.lesson,step:due.step} : reviewLesson ? {lesson:reviewLesson.id, step:reviewLesson.steps.findIndex(s=>s.t==='play'&&!s.song&&!s.anyNote)} : null;
   const focus = store.data.repertoire?.[store.data.focusPieces?.[course]];
   const familiar = focus && playable(focus) ? {lesson:focus.lesson, step:focus.step} : pieceOptions(course).find(p=>done[p.lesson]) || null;
   const revisit = store.data.nextPractice?.[course]?.target;

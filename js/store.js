@@ -4,6 +4,8 @@ import { courseForLesson } from './courses.js';
 const KEY = 'piano-tutor:v1';
 
 const defaults = {
+  learning: {},     // attempt history and personal confidence; separate from lesson completion
+  musicianship: {}, // generator variants on this device
   done: {},          // lessonId -> true
   last: null,
   recitalRuns: {},    // choice-specific completed recital performance step indexes
