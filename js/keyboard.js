@@ -19,9 +19,11 @@ export class Keyboard {
     el.innerHTML = '<div class="kb-scroll"><div class="kb-keys"></div></div>';
     this.scroller = el.firstChild;
     this.inner = this.scroller.firstChild;
+    this.disposed = false;
     this.bindInput();
     this.setRange(lo, hi);
-    new ResizeObserver(() => this.layout()).observe(el);
+    this.observer = new ResizeObserver(() => this.layout());
+    this.observer.observe(el);
   }
 
   setRange(lo, hi) {
@@ -126,7 +128,15 @@ export class Keyboard {
     k._t = setTimeout(() => k.classList.remove(kind), 450);
   }
 
+  dispose() {
+    this.disposed = true;
+    this.observer.disconnect();
+    this.releaseInput();
+    for (const k of this.keys.values()) clearTimeout(k._t);
+  }
+
   bindInput() {
+    const pending = new Map();
     const active = new Map(); // pointerId -> {midi, handle}
     const keyAt = (x, y) => {
       const el = document.elementFromPoint(x, y)?.closest('.key');
@@ -149,7 +159,10 @@ export class Keyboard {
       const midi = keyAt(e.clientX, e.clientY);
       if (midi == null) return;
       e.preventDefault();
-      await piano.unlock();
+      const request = {}; pending.set(e.pointerId, request);
+      try { await piano.unlock(); } catch { if (pending.get(e.pointerId) === request) pending.delete(e.pointerId); return; }
+      if (this.disposed || pending.get(e.pointerId) !== request) return;
+      pending.delete(e.pointerId);
       down(e.pointerId, midi);
     });
     this.inner.addEventListener('pointermove', (e) => {
@@ -159,6 +172,7 @@ export class Keyboard {
       if (midi != null && midi !== a.midi) { up(e.pointerId); down(e.pointerId, midi); }
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) =>
-      this.inner.addEventListener(t, (e) => up(e.pointerId)));
+      this.inner.addEventListener(t, (e) => { pending.delete(e.pointerId); up(e.pointerId); }));
+    this.releaseInput = () => { pending.clear(); for (const id of active.keys()) up(id); };
   }
 }

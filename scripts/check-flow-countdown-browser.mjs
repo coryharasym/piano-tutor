@@ -46,6 +46,9 @@ try {
   await page.screenshot({path:'/tmp/flow-countdown-landscape.png'});
   await page.waitForTimeout(9000);assert.equal(await countdown.isVisible(),true,'nine seconds is too early');
   await countdown.waitFor({state:'hidden',timeout:2500});
+  await page.locator('[data-again]').waitFor({state:'visible',timeout:6000});
+  await page.locator('[data-again]').click();assert.equal(await countdown.isVisible(),true,'Play again must prepare with ten seconds');
+  assert.equal(await page.locator('[data-countdown-seconds]').innerText(),'10');
   await page.locator('[data-restart]').click();assert.equal(await countdown.isVisible(),true);
   await page.locator('[data-mode] [data-v="wait"]').click();assert.equal(await countdown.isVisible(),false,'Wait keeps its usual count-in');
   assert.deepEqual(errors,[]);

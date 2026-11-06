@@ -9,6 +9,7 @@ import { piano } from './audio.js';
 import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
+import {findLesson} from './lessons/index.js';
 import {courseForLesson} from './courses.js';
 import {recordAttempt} from './learning.js';
 import { ChordCoach } from './chord-coach.js';
@@ -329,7 +330,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
 
   function finish() {
     finished = true;
-    if(lessonId)recordAttempt(courseForLesson(lessonId),lessonId,stepIndex,assistedChords>0||prefs.hand!=='both');
+    if(lessonId)recordAttempt(findLesson(lessonId)?.lesson.course||courseForLesson(lessonId),lessonId,stepIndex,assistedChords>0||prefs.hand!=='both');
     const hits = items.filter((it) => it.state === 'hit').length;
     const total = mine().length;
     piano.chime();
@@ -344,7 +345,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     msg.innerHTML = `<div class="card"><h2>${praise}</h2><p>${line}.</p>
       ${prefs.mode === 'wait' ? '<p class="muted small">Ready for more? Try Flow mode, where the music keeps moving.</p>' : pct >= 90 && prefs.speed < 1.5 ? '<p class="muted small">Try it a little faster next time.</p>' : ''}
       <div class="sheet-actions"><button class="text-btn" data-back>Back to lesson</button><button class="btn primary" data-again>Play again</button></div></div>`;
-    msg.querySelector('[data-again]').addEventListener('click', reset);
+    msg.querySelector('[data-again]').addEventListener('click', () => reset());
     msg.querySelector('[data-back]').addEventListener('click', onExit);
   }
 
@@ -485,6 +486,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     cancelAnimationFrame(raf);
     clearInterval(chordTimer);
     listener.onNote.delete(onNote);
+    kb.dispose();
     chordCoach.dispose();
     standPrefs?.disposeMenu();
     disposePracticeMore();

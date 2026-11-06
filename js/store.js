@@ -41,11 +41,32 @@ function migrateRecitalRuns(data) {
   return {...data,recitalRuns:runs};
 }
 
+// Check backup structure before replacing live progress. Older omitted fields use defaults.
+const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+function validateData(data) {
+  if (!object(data)) throw new Error('Invalid Piano Tutor progress');
+  const maps = ['learning','musicianship','done','recitalRuns','lastByCourse','practice','best','repertoire','focusPieces','sessions','nextPractice','settings','recitals'];
+  for (const key of maps) if (key in data && !object(data[key])) throw new Error('Invalid backup field: ' + key);
+  const settings = data.settings || {};
+  const numbers = {volume:[0,1],tuning:[-12,12],metroBpm:[40,208],verse:[1,100],scoreZoom:[0.1,5]};
+  for (const [key,[lo,hi]] of Object.entries(numbers)) if (key in settings && (!Number.isFinite(settings[key]) || settings[key] < lo || settings[key] > hi)) throw new Error('Invalid setting: '+key);
+  const options = {course:['beginner','intermediate','advanced'],playMode:['wait','flow'],playHand:['both','R','L'],metroBeats:[2,3,4,6],playSpeed:[0.5,0.75,1,1.25,1.5],listenSpeed:[0.5,0.75,1,1.25,1.5]};
+  for (const [key,values] of Object.entries(options)) if (key in settings && !values.includes(settings[key])) throw new Error('Invalid setting: '+key);
+  for (const value of Object.values(data.recitalRuns || {})) if (!Array.isArray(value) || value.some(i=>!Number.isInteger(i)||i<0)) throw new Error('Invalid recital record');
+  for (const value of Object.values(data.lastByCourse || {})) if (!object(value) || typeof value.lesson!=='string' || !Number.isInteger(value.step) || value.step<0) throw new Error('Invalid course resume');
+  if ('sessionHistory' in data && !Array.isArray(data.sessionHistory)) throw new Error('Invalid backup history');
+  if (data.last != null && (!object(data.last) || typeof data.last.lesson !== 'string' || !Number.isInteger(data.last.step) || data.last.step < 0)) throw new Error('Invalid saved lesson');
+  for (const item of Object.values(data.learning || {})) if (!object(item) || typeof item.lesson !== 'string' || !Number.isInteger(item.step) || item.step < 0) throw new Error('Invalid learning record');
+  for (const value of Object.values(data.musicianship || {})) if (!Number.isSafeInteger(value) || value < 0) throw new Error('Invalid exercise variant');
+  for (const session of Object.values(data.sessions || {})) if (!object(session) || !Array.isArray(session.stages) || session.stages.some(s => !object(s))) throw new Error('Invalid practice session');
+  return data;
+}
+
 function read() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(defaults);
-    const data = JSON.parse(raw);
+    const data = validateData(JSON.parse(raw));
     return { ...structuredClone(defaults), ...migrateRecitalRuns(data), settings: { ...defaults.settings, ...data.settings } };
   } catch {
     return structuredClone(defaults);
@@ -77,6 +98,7 @@ export const store = {
   restore(text) {
     const file = JSON.parse(text);
     if (file?.app !== 'piano-tutor' || !file.data?.done || typeof file.data.done !== 'object' || Array.isArray(file.data.done)) throw new Error('Not a Piano Tutor backup');
+    validateData(file.data);
     const localCalibration = this.data.keyboardCalibration;
     const { keyboardCalibration, ...data } = file.data;
     this.data = { ...structuredClone(defaults), ...migrateRecitalRuns(data), settings: { ...defaults.settings, ...data.settings } };

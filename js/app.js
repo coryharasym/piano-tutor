@@ -18,7 +18,7 @@ import { mountSheet } from './sheet.js';
 import { mountNotes } from './notes.js';
 import { showCalibration, calibrationCount } from './calibration.js';
 import { mountMusicianship, restoreLab } from './musicianship.js';
-import { recordAttempt, ratePractice } from './learning.js';
+import { recordAttempt, ratePractice, restoreReview } from './learning.js';
 import { ChordCoach } from './chord-coach.js';
 import { mountSession, mountPieces, mountTechnique, sessionDock } from './workspace.js';
 import { savePiece, savedPiece, visitPiece, escapeHTML, rememberSettings } from './personal.js';
@@ -39,7 +39,8 @@ window.addEventListener('hashchange', route);
 function route() {
   cleanup();
   const [, view, id, step] = location.hash.split('/');
-  if(view==='musicianship'){keepAwake(false);disposers.push(mountMusicianship(app,{go,onBack:()=>go('#/'),kind:id}));return;}
+  if(view==='musicianship'){keepAwake(false);disposers.push(mountMusicianship(app,{go,onBack:()=>go('#/'),kind:id,variant:step}));return;}
+  if(id?.startsWith('review-')&&!findLesson(id))restoreReview(id);
   if(id&&/^(int-|adv-)?lab-/.test(id)&&!findLesson(id))restoreLab(id);
   if (view === 'session' || view === 'pieces' || view === 'technique') {
     keepAwake(false);
@@ -107,7 +108,7 @@ function micButton({ labelled = false } = {}) {
     if (listener.active) { listener.stop(); paint(); toast('Listening off. Tap keys on screen instead.'); return; }
     btn.disabled = true;
     try {
-      await listener.start();
+      if (!await listener.start()) return;
       paint();
       toast('Listening. Play a note!');
     } catch (e) {
@@ -374,7 +375,9 @@ async function showTuner() {
       : `<b>All set.</b> Your Middle C read ${Math.abs(cents)} cents ${cents < 0 ? 'low' : 'high'} (100 cents is one note). The app now adjusts for it, so play a C to check it shows as C.`;
     piano.chime();
   };
-  const close = mountSheet(dlg, () => listener.onRaw.delete(onRaw));
+  let tunerClosed = false;
+  const wasActive = listener.active;
+  const close = mountSheet(dlg, () => { tunerClosed = true; listener.onRaw.delete(onRaw); if (!wasActive && !listener.active) listener.stop(); });
   $('[data-close]', dlg).addEventListener('click', close);
   $('[data-done]', dlg).addEventListener('click', close);
   $('[data-zero]', dlg).addEventListener('click', () => {
@@ -383,7 +386,7 @@ async function showTuner() {
   });
   disposers.push(close);
   try {
-    await listener.start();
+    if (!await listener.start() || tunerClosed) return;
     listener.onRaw.add(onRaw);
   } catch {
     msg.textContent = 'The microphone is off. Allow microphone access for this site, then try again.';
@@ -413,6 +416,7 @@ function showFreePlay() {
     kb.flash(midi, 'good');
   };
   const kb = new Keyboard($('.kb-wrap', el), { lo: toMidi('C3'), hi: toMidi('C6'), labels: store.setting('keyNames') ? 'all' : 'c', onPress: show });
+  disposers.push(() => kb.dispose());
   const onNote = (m) => show(m);
   listener.onNote.add(onNote);
   disposers.push(() => listener.onNote.delete(onNote));
@@ -609,18 +613,20 @@ function renderRead(step, ctx) {
 
 function listenButton(seq, tempo = 90) {
   const btn = h(`<button class="pill">${icons.ear}<span>Listen</span></button>`);
-  let playing = null;
+  let playing = null, starting = false, generation = 0, disposed = false;
+  const stop = () => { generation++; starting = false; playing?.cancel(); playing = null; btn.classList.remove('active'); };
   btn.addEventListener('click', async () => {
-    await piano.unlock();
-    if (playing) { playing.cancel(); playing = null; return; }
-    btn.classList.add('active');
-    // Played like a demo, so dynamics, staccato and the pedal can be heard.
-    playing = playDemo(buildPractice({ rh: seq }), tempo, false, () => {});
-    await playing.done;
-    playing = null;
-    btn.classList.remove('active');
+    if (playing || starting) { stop(); return; }
+    starting = true; const request = ++generation;
+    try { await piano.unlock(); } catch { if (!disposed && request === generation) { starting = false; toast('Sound could not start. Try Listen again.'); } return; }
+    if (disposed || request !== generation) return;
+    starting = false; btn.classList.add('active');
+    const run = playDemo(buildPractice({ rh: seq }), tempo, false, () => {});
+    playing = run;
+    await run.done;
+    if (playing === run) { playing = null; btn.classList.remove('active'); }
   });
-  disposers.push(() => playing?.cancel());
+  disposers.push(() => { disposed = true; stop(); });
   return btn;
 }
 
@@ -665,7 +671,7 @@ function renderPlay(step, ctx) {
   const { moments, staves } = practice;
   const reps = step.reps || 1;
   const labelsAllowed = step.keyLabels || 'c';
-  const canPlayAlong = !step.anyNote && !step.anyOrder && !step.noDemo && (step.song || moments.length >= 6);
+  const canPlayAlong = !step.ear && !step.anyNote && !step.anyOrder && (step.song || moments.length >= 6);
   const labels = store.setting('keyNames') ? labelsAllowed : (labelsAllowed === 'none' ? 'none' : 'c');
 
   const el = h(`<div class="play">
@@ -743,6 +749,7 @@ function renderPlay(step, ctx) {
   disposers.push(bindPracticeMenu(more));
 
   const kb = new Keyboard(kbWrap, { lo: range[0], hi: range[1], labels, onPress: (m) => input(m, 'tap') });
+  disposers.push(() => kb.dispose());
 
   // ---- display
   const strip = !step.staff && !step.anyNote;
@@ -976,7 +983,7 @@ function renderPlay(step, ctx) {
   disposers.push(() => { listener.onNote.delete(onNote); clearInterval(chordTimer); });
 
   // ---- demo playback
-  let demo = null;
+  let demo = null, demoStarting = false, demoGeneration = 0, demoDisposed = false;
   const demoBtn = $('[data-demo]', el);
   const pauseBtn=h('<button class="pill" data-practice-pause>Pause</button>');
   $('.play-tools',el).appendChild(pauseBtn);
@@ -995,13 +1002,17 @@ function renderPlay(step, ctx) {
   });
   paintSpeed();
   const stopDemo = () => {
+    demoGeneration++; demoStarting = false;
     demo?.cancel(); demo = null;
     demoBtn?.classList.remove('active');
     if (demoBtn) demoBtn.querySelector('span').textContent = 'Listen';
   };
   demoBtn?.addEventListener('click', async () => {
-    await piano.unlock();
-    if (demo) return stopDemo();
+    if (demo || demoStarting) return stopDemo();
+    demoStarting = true; const request = ++demoGeneration;
+    try { await piano.unlock(); } catch { if (!demoDisposed && request === demoGeneration) { demoStarting = false; toast('Sound could not start. Try Listen again.'); } return; }
+    if (demoDisposed || request !== demoGeneration) return;
+    demoStarting = false;
     demoBtn.classList.add('active');
     demoBtn.querySelector('span').textContent = 'Stop';
     demo = playDemo(practice, (step.tempo || 80) * listenSpeed, step.metronome || step.song, (i) => {
@@ -1009,9 +1020,10 @@ function renderPlay(step, ctx) {
       drawMusic();
       if (i >= 0 && (!step.ear || showTargets)) moments[i].items.forEach((it) => kb.flash(it.midi, 'press'));
     }, step.time);
-    demo.done.then(() => { if (demo) stopDemo(); });
+    const run = demo;
+    run.done.then(() => { if (demo === run) stopDemo(); });
   });
-  disposers.push(stopDemo);
+  disposers.push(() => { demoDisposed = true; stopDemo(); });
 
   $('[data-along]', el)?.addEventListener('click', () => { piano.unlock(); go(ctx.playAlong); });
   $('[data-verse]', el)?.addEventListener('click', () => { store.setting('verse', (verseOf(step) % verseCount(step)) + 1); route(); });

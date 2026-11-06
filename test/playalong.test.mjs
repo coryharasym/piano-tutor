@@ -20,7 +20,7 @@ const listener={onNote:new Set(),active:true,clearRecent(){},chordHeard:()=>fals
 const piano={chime(){},play:()=>({stop(){}})};
 const settings={};
 const store={setting:(key,value)=>value===undefined?settings[key]:(settings[key]=value)};
-class Keyboard {constructor(){this.keys=new Map();} setTargets(){} flash(){}}
+class Keyboard {constructor(){this.keys=new Map();} setTargets(){} flash(){} dispose(){}}
 globalThis.loopTest={...practice,...theory,ChordCoach,listener,piano,store,Keyboard,icons:{}};
 let source=readFileSync(new URL('../js/playalong.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;\n/gm,'');
