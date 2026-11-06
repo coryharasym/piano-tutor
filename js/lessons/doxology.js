@@ -1,3 +1,5 @@
+import * as F from '../figures.js';
+
 // The Doxology (OLD HUNDREDTH, Geneva 1551) grows through the course: a
 // little more of it in each unit, until the whole hymn with both hands.
 // Melody and rhythm checked against hymnary.org's MusicXML (Bourgeois).
@@ -6,7 +8,7 @@
 // The four lines in C, as the first recital plays them.
 const C1 = 'C4/h/4 C4/q/4 B3/q/3 A3/q/2 G3/q/1 C4/h/1 D4/h/2 E4/h/3';
 const C2 = 'E4/h/3 E4/q/3 E4/q/3 D4/q/2 C4/q/1 F4/h/4 E4/h/3 D4/h/2';
-const C3 = 'C4/h/2 D4/q/3 E4/q/4 D4/q/3 C4/q/2 A3/h/1 B3/h/2 C4/h/3';
+const C3 = 'C4/h/3 D4/q/4 E4/q/5 D4/q/4 C4/q/3 A3/h/1 B3/h/2 C4/h/3';
 const C4 = 'G4/h/5 E4/q/3 C4/q/1 D4/q/2 F4/q/4 E4/h/3 D4/h/2 C4/h/1';
 
 // And in G major, the key it's usually sung in.
@@ -76,6 +78,22 @@ export const DOXOLOGY_LESSONS = [
   {
     unit: 'u3', after: 'counting',
     lesson: {
+      id: 'hand-position-shifts', title: 'Moving your hand to a new position',
+      summary: 'Move your whole hand, then find the next notes without stretching.',
+      steps: [
+        {t:'read',title:'Your hand can move',
+          fig:F.kbFigure({from:'G3',to:'G4',names:'all',marks:[{note:'A3',hand:'R',label:'1'},{note:'B3',hand:'R',label:'2'},{note:'C4',hand:'R',label:'3'},{note:'D4',hand:'R',label:'4'},{note:'E4',hand:'R',label:'5'}],caption:'Right hand: A B C D E, fingers 1 2 3 4 5.'}),
+          body:`<p>C position is a starting place, not a rule that your thumb must stay on C. When a melody leaves those five keys, you can <b>release and move your whole hand</b>. Let your forearm follow, keep your wrist flexible, and settle over the new keys. Do not anchor one finger and stretch the others.</p><p>Try this silently: find Middle C with your right thumb. Release, move two white-key steps to the left, and put your thumb on <b>A below Middle C</b>. Your fingers now cover <b>A B C D E</b>: 1 2 3 4 5. Middle C is under finger 3. Look at your hand while you learn the move.</p><p>This is a position shift. Thumb-under for scales is a different movement, taught later. Take this slowly; no stretching or quick jumps are needed.</p>`},
+        {t:'play',title:'Find the lower five-note position',say:'Set your right thumb on A below Middle C before starting. Play A B C D E and back. Fingers 1 2 3 4 5, then 4 3 2 1. Keep each finger near its key.',rh:'A3/q/1 B3/q/2 C4/q/3 D4/q/4 E4/q/5 D4/q/4 C4/q/3 B3/q/2 A3/w/1',staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60},
+        {t:'play',title:'Release, move, and settle',say:'Start with your thumb on Middle C. After the long C, release and move your thumb down to A. Play A B C D E. Then release, return your thumb to Middle C, and play C D E F G C. Pause freely at each move in this exercise. Say the next thumb note before you move.',rh:'C4/w/1 A3/q/1 B3/q/2 C4/q/3 D4/q/4 E4/w/5 C4/q/1 D4/q/2 E4/q/3 F4/q/4 G4/w/5 C4/w/1',staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60},
+        {t:'play',title:'Prepare the Doxology phrase',say:'Before playing, settle into A B C D E position: thumb on A below Middle C and finger 3 on Middle C. Play C D E D C A B C using 3 4 5 4 3 1 2 3. Every note is now under one of your five fingers.',rh:C3,staff:true,names:true,showFingers:true,keyLabels:'all',range:['G3','G4'],tempo:60,reps:2},
+        {t:'read',title:'Plan the next position',body:`<p>Before the next lesson, practise the move silently once more. For <b>“Praise Him above”</b>, use thumb on A below Middle C and finger 3 on Middle C. Before <b>“Praise Father, Son”</b>, release and return to C position: thumb on Middle C and finger 5 on G.</p><p>In the whole melody, prepare the A position between lines 2 and 3, and return to C position between lines 3 and 4. At first, stop between phrases, release, look, move, and settle. Once the moves feel comfortable, make the gaps smaller while keeping the written notes their full length.</p>`},
+      ],
+    },
+  },
+  {
+    unit: 'u3', after: 'counting',
+    lesson: {
       id: 'doxology-3', doxology: true,
       title: 'Doxology: the whole melody',
       summary: 'All four lines, read from the staff and counted in 4.',
@@ -88,8 +106,8 @@ export const DOXOLOGY_LESSONS = [
         },
         {
           t: 'play', title: 'Line 3',
-          say: '"Praise Him above": start with finger 2 on Middle C. When the tune dips to the low A, play it with your thumb, then walk back up B, C.',
-          rh: C3, lyrics: W3, staff: true, names: true, range: ['E3', 'A4'], keyLabels: 'c', tempo: 76, reps: 2,
+          say: '"Praise Him above": prepare A B C D E position, thumb on low A and finger 3 on Middle C. Play C D E D C A B C with fingers 3 4 5 4 3 1 2 3. No stretch is needed.',
+          rh: C3, lyrics: W3, staff: true, names: true, showFingers: true, range: ['E3', 'A4'], keyLabels: 'c', tempo: 76, reps: 2,
         },
         {
           t: 'play', title: 'Line 4',
@@ -98,7 +116,7 @@ export const DOXOLOGY_LESSONS = [
         },
         {
           t: 'play', title: 'The whole melody', song: true,
-          say: 'All four lines, reading from the staff. Count steadily, and hold each half note for its full two beats.',
+          say: 'All four lines, reading from the staff. Between lines 2 and 3, release and move to A position (thumb on A below Middle C, finger 3 on C). Return to C position before line 4. Pause between phrases while learning the moves; then join them with a steady count and full-length half notes.',
           rh: `${C1} ${C2} ${C3} ${C4}`, lyrics: ALL_WORDS, staff: true, names: false, range: ['E3', 'A4'], keyLabels: 'c', tempo: 80,
         },
       ],
