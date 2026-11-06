@@ -36,6 +36,8 @@ try{
   assert.equal(await page.locator('.paper h1').innerText(),selectedTitle);
   assert.equal(await page.locator('.contents').count(),0);
   assert.match(await page.locator('[data-print]').innerText(),/^Print$/);
+  assert.equal((await page.evaluate(()=>window.printCalls)).length,0,'Opening a song preview must not automatically print');
+  await page.locator('[data-print]').click();
   assert.equal((await page.evaluate(()=>window.printCalls))[0].pages,1);
   await page.emulateMedia({media:'print'});assert.equal(await page.locator('.paper:visible').count(),1);
   if(course==='beginner')await page.pdf({path:'/tmp/piano-single-song.pdf',preferCSSPageSize:true,printBackground:true});
