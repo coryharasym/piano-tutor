@@ -246,3 +246,20 @@ Browser checks cover the compact home at five viewport sizes, primary-action
 visibility, all menu destinations, course/readiness gates, focus restoration,
 background locking and progress preservation. The iPhone landscape safe-area
 check also includes the grouped menu.
+
+
+## Give Me Jesus
+
+The Beginner Songbook and Hymns shelf include an optional late-beginner setting
+of the traditional spiritual “In the morning when I rise”, associated with
+Chapter 5, Playing with expression. It has a C-major melody, a quiet single-note
+bass, first-verse lyrics, phrase marks, finger guidance and a one-beat pickup.
+Three dotted-eighth/sixteenth figures are simplified to even eighths. The melody,
+source references and adaptation details are retained in `sources/give-me-jesus/`.
+The accompaniment and teaching guidance are newly authored.
+
+Open it from the Songbook or Hymns shelf, learn the melody and bass separately,
+then play both hands. Listen, Wait/Flow, Music stand, hand choice, passage loops,
+printing and My Pieces remain available. It can become the current-focus piece
+for Guided practice. This adds no compulsory lesson or recital, and leaves course
+completion totals and curriculum PDFs unchanged.
