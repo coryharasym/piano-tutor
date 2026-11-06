@@ -153,3 +153,30 @@
  .papers { padding-left:max(16px,env(safe-area-inset-left)); padding-right:max(16px,env(safe-area-inset-right)); }
  .print-view > .contents { width:min(8.5in,calc(100% - max(16px,env(safe-area-inset-left)) - max(16px,env(safe-area-inset-right)))); }
 }
+
+/* Landscape gives notation a readable scale and lets its panel scroll. */
+.playalong-more { position:relative; flex:none; }
+.playalong-more[hidden],.playalong-more:not([open]) .secondary-tools { display:none; }
+.playalong-more summary { cursor:pointer; padding:6px 12px; border:1px solid var(--line); border-radius:20px; background:var(--panel); font-weight:600; list-style:none; }
+.playalong-more[open] .secondary-tools { position:fixed; right:max(12px,env(safe-area-inset-right)); top:var(--practice-menu-top,48px); width:300px; max-width:calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px); max-height:calc(100dvh - var(--practice-menu-top,48px) - env(safe-area-inset-bottom) - 8px); overflow:auto; z-index:50; display:grid; gap:12px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:var(--shadow); }
+.playalong-more .seg { width:100%; }
+@media(orientation:landscape) and (max-height:460px) {
+ .playalong .top-title { display:grid; flex:1 1 100px; min-width:0; overflow:hidden; }
+ .playalong .topbar > :not(.top-title) { flex-shrink:0; }
+ .playalong .topbar { flex-wrap:nowrap; }
+ .lesson.step-play .music { display:block; overflow:auto; }
+ .lesson.step-play .music > svg { width:100%!important; height:auto!important; max-height:none!important; }
+ .score-follow { overflow:auto!important; }
+ .score-follow > .stand-system { height:auto; }
+ .score-follow > .stand-system > svg { height:auto!important; width:100%!important; }
+ .playalong .stand-notation { overflow:auto; }
+}
+
+@media(orientation:landscape) and (max-height:360px) {
+ .lesson.step-play .feedback:empty { display:none; }
+ .lesson.step-play .stage { overflow-y:auto; }
+ .lesson.step-play .music { min-height:90px; flex-shrink:0; }
+}
+.playalong-more .stand-tempo { display:flex; gap:8px; align-items:center; }
+.playalong-more .seg { margin:0; }
+.playalong-more .seg button { flex:1; min-width:0; padding:8px 6px; font-size:.85rem; }

@@ -10,7 +10,7 @@ import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
 import { ChordCoach } from './chord-coach.js';
-import { mountStandTools, renderStandScore } from './music-stand.js';
+import { mountStandTools, renderStandScore, bindPracticeMenu } from './music-stand.js';
 import { savedPiece, rememberSettings, savePiece } from './personal.js';
 
 const LOOKAHEAD = 4;        // beats visible above the keyboard
@@ -102,6 +102,20 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     save.textContent=savedPiece(lessonId,stepIndex)?'Saved in My Pieces':'Save piece';
     save.addEventListener('click',()=>{savePiece(lessonId,stepIndex);persist();save.textContent='Saved in My Pieces';});
     el.querySelector('.loop-controls').appendChild(save);
+  }
+  let disposePracticeMore = () => {};
+  if (lessonId) {
+    const more=document.createElement('details');more.className='playalong-more';
+    more.innerHTML='<summary>More</summary><div class="secondary-tools" aria-label="More practice controls"></div>';
+    el.querySelector('.topbar').appendChild(more);
+    const panel=more.querySelector('.secondary-tools');
+    const controls=[el.querySelector('[data-speed]'),tempoControl,el.querySelector('[data-save-piece]')].filter(Boolean);
+    const slots=controls.map(node=>{const slot=document.createComment('control position');node.before(slot);return slot;});
+    const landscape=window.matchMedia('(orientation:landscape) and (max-height:460px)');
+    const arrange=()=>{more.open=false;more.hidden=!landscape.matches;controls.forEach((node,i)=>landscape.matches?panel.appendChild(node):slots[i].after(node));};
+    arrange();landscape.addEventListener('change',arrange);
+    const unbind=bindPracticeMenu(more);
+    disposePracticeMore=()=>{unbind();landscape.removeEventListener('change',arrange);};
   }
   if(saved){
     el.querySelector('[data-loop-from]').value=String(Math.max(1,Math.min(bars.length,saved.from||1)));
@@ -470,6 +484,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     listener.onNote.delete(onNote);
     chordCoach.dispose();
     standPrefs?.disposeMenu();
+    disposePracticeMore();
   };
 }
 

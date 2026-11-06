@@ -17,6 +17,10 @@ try{
  await page.locator('[data-menu]').click();await page.locator('[data-course="advanced"]').click();
  await page.locator('[data-menu]').click();await page.locator('.home-menu [data-songbook]').click();
  await page.waitForSelector('.paper h1');
+ assert.equal(await page.locator('.contents a').filter({hasText:/^Play it through$/}).count(),0);
+ await page.locator('[data-search]').fill('The Doxology');
+ assert.ok(await page.locator('.paper:visible').count()>0,'Real hymn names must be searchable');
+ assert.match(await page.locator('.paper:visible h1').first().innerText(),/Doxology/);
  await page.locator('[data-search]').fill('give me jesus');
  assert.equal(await page.locator('.paper:visible').count(),1,'Search finds hymn even from Advanced');
  assert.match(await page.locator('[data-results]').innerText(),/1 song found/);
