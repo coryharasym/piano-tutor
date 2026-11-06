@@ -7,3 +7,11 @@
 .chord-coach .pill, .mic-chord-help .pill { min-height:32px; height:auto; padding:5px 10px; font-size:.8rem; }
 .mic-chord-help { padding:4px 10px; font-size:.8rem; text-align:center; }
 @media(max-height:450px) { .chord-coach { gap:4px 8px; padding:2px 8px; font-size:.74rem; } .chord-coach .pill, .mic-chord-help .pill { min-height:28px; padding:3px 8px; } }
+
+/* A shared overlay keeps Flow preparation visible in falling notes and sheet music. */
+.playalong { position:relative; }
+.flow-countdown { position:absolute; z-index:40; left:50%; top:50%; transform:translate(-50%,-50%); display:grid; justify-items:center; gap:4px; width:min(300px,calc(100% - 32px)); padding:16px 20px; border:2px solid var(--accent); border-radius:20px; background:var(--panel); color:var(--ink); box-shadow:0 12px 40px rgba(0,0,0,.2); text-align:center; pointer-events:none; font-weight:650; }
+.flow-countdown[hidden] { display:none; }
+.flow-countdown strong { font-size:clamp(64px,16dvh,112px); line-height:1; color:var(--accent); font-variant-numeric:tabular-nums; }
+.flow-countdown > span:last-child { font-size:.85rem; color:var(--ink-soft); }
+@media(max-height:450px) { .flow-countdown { padding:10px 16px; gap:2px; } }
