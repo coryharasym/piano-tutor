@@ -180,3 +180,6 @@
 .playalong-more .stand-tempo { display:flex; gap:8px; align-items:center; }
 .playalong-more .seg { margin:0; }
 .playalong-more .seg button { flex:1; min-width:0; padding:8px 6px; font-size:.85rem; }
+
+.practice-repeat[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+.practice-repeat span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }

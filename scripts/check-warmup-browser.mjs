@@ -53,7 +53,7 @@ try{
    const press=()=>page.evaluate(async i=>{const {findLesson}=await import('./js/lessons/index.js');const {buildPractice}=await import('./js/practice.js');for(const m of buildPractice(findLesson('warmup').lesson.steps[i]).moments)for(const it of m.items)window.testKeyboard.onPress(it.midi,'tap');},i);
    await press();await page.waitForFunction(()=>document.querySelector('.reps')?.textContent==='Round 2 of 2'&&!document.querySelector('.feedback')?.textContent.includes('Once more'));
    await press();await page.waitForSelector('.feedback .again');
-   if(i===1){await page.locator('[data-restart]').click();assert.match(await page.locator('.reps').innerText(),/Round 1/);}
+   if(i===1){await page.locator('.practice-personal-tools summary').click();await page.locator('[data-restart]').click();assert.match(await page.locator('.reps').innerText(),/Round 1/);}
   }
   await goStep(3);await page.locator('[data-along]').click();await page.waitForSelector('[data-loop]');
   await page.getByLabel('First bar').selectOption('1');await page.getByLabel('Last bar').selectOption('1');await page.locator('[data-loop]').click();assert.equal(await page.locator('[data-loop]').getAttribute('aria-pressed'),'true');

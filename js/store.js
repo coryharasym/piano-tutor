@@ -18,6 +18,7 @@ const defaults = {
   settings: {
     course: 'beginner',
     volume: 0.8,
+    autoRepeat: false, // repeat completed exercises while explicitly enabled
     easyChords: false, // optional mic assistance: one exact expected chord note advances
     anyOctave: true, // accept the right note in a neighbouring octave (mic only)
     keyNames: true,  // show note names on keys where the lesson allows
