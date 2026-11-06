@@ -111,7 +111,7 @@ export class Listener {
 
   // Track each expected key independently. Wait practice tolerates a brief
   // masked partial; timed Flow still requires two complete current frames.
-  chordHeard(midis, { strict = false } = {}) {
+  chordHeard(midis, { strict = false, easy = false } = {}) {
     const now = performance.now();
     if (!this.active || this.calibrating || now < this.muteUntil) {
       this.chordFrames = 0;
@@ -142,7 +142,11 @@ export class Listener {
     // when the stricter model cannot confirm every played key.
     const detected = modelHeard ? [...new Set(midis)] : evidence;
     const complete = !!modelHeard || (!this.chordModel && !octavePair && detected.length === new Set(midis).size && midis.length > 0);
-    const heard = this.chords.push(midis, detected, { now, audible, complete, strict, requireComplete: octavePair || !!this.chordModel });
+    // Assisted practice accepts a stable expected fundamental even when the
+    // combined waveform has no reliable single-note pitch. Flow stays strict.
+    const assisted = easy && !strict;
+    const heardAll = this.chords.push(midis, detected, { now, audible, complete, strict, requireComplete: octavePair || !!this.chordModel });
+    const heard = assisted ? this.chords.detected.length > 0 && detected.length > 0 : heardAll;
     this.chordStatus = { detected: this.chords.detected, audible };
     this.chordFrames = heard ? 2 : 0;
     return heard;
@@ -159,6 +163,11 @@ export class Listener {
     if (!this.hasOctavePair(midis) || !this.analyser) return this.hasOctavePair(midis);
     if (!profileCompatible(this.calibration, this.analyser.context.sampleRate, this.tuning)) return true;
     return midis.some(m => typeof this.calibration.notes?.[m] !== 'string' || this.calibration.notes[m].length !== 5464);
+  }
+
+  consumeChord(midis) {
+    this.consumedChord = [...new Set(midis)].sort((a,b) => a-b).join(',');
+    this.chordConsumedAt = performance.now();
   }
 
   clearRecent() {

@@ -179,6 +179,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
         kb.flash(midi, 'press');
         chordCoach.update(items.filter(it => it.moment === target && !it.auto).map(it => it.midi), {}, { canAssist: prefs.mode === 'wait' });
         if (prefs.mode === 'wait' && chordCoach.takeNote(midi)) {
+          listener.consumeChord?.(items.filter(it => it.moment === target && !it.auto).map(it => it.midi));
           assistedChords++;
           items.filter(it => it.moment === target && !it.auto).forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
           nextMoment++; listener.clearRecent(); chordCoach.reset();
@@ -225,10 +226,11 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     chordHelp.hidden = want.length < 2 || !listener.needsChordCalibration?.(calibrationKeys);
     const eligible = want.length > 1 && want.some(it => it.state === 'pending');
     if (!eligible) { chordCoach.reset(); return; }
-    if (chordCoach.assisted || chordCoach.easy) { chordCoach.update(calibrationKeys, {}, { canAssist: prefs.mode === 'wait' }); return; }
-    const heardChord = listener.chordHeard(calibrationKeys, { strict: prefs.mode === 'flow' });
+    if (chordCoach.assisted) { chordCoach.update(calibrationKeys, {}, { canAssist: prefs.mode === 'wait' }); return; }
+    const heardChord = listener.chordHeard(calibrationKeys, { strict: prefs.mode === 'flow', easy: prefs.mode === 'wait' && chordCoach.easy });
     chordCoach.update(calibrationKeys, listener.chordStatus, { canAssist: prefs.mode === 'wait' });
     if (heardChord) {
+      if (chordCoach.easy) assistedChords++;
       want.filter(it => it.state === 'pending').forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
       if (prefs.mode === 'wait') nextMoment++;
       listener.clearRecent();
