@@ -127,25 +127,35 @@ export function mountPrint(root, { songs, heading, onBack }) {
   const papers = el.querySelector('.papers');
   songs.forEach(({ unit, lesson, stepIndex }) => papers.appendChild(songPage(unit, lesson, lesson.steps[stepIndex])));
   el.querySelector('[data-back]').addEventListener('click', onBack);
-  el.querySelector('[data-print]').addEventListener('click', () => { clearOnly(); window.print(); });
-  // Printing one song from the songbook: hide the other pages while the dialog is open.
+  el.querySelector('[data-print]').addEventListener('click', () => window.print());
+  // Keep the other scores outside the live document throughout printing.
+  // Keep the selection even if afterprint arrives before the preview settles.
+  // A one-song view needs no temporary CSS selection or event-based reset.
   const pages = [...papers.children];
-  const clearOnly = () => { delete el.dataset.only; pages.forEach((p) => p.classList.remove('only')); };
+  let selectedDispose = null;
+  const clearSelected = () => { selectedDispose?.(); selectedDispose = null; };
   el.querySelectorAll('[data-one]').forEach((b) => b.addEventListener('click', () => {
-    clearOnly();
-    el.dataset.only = '';
-    pages[+b.dataset.one].classList.add('only');
+    const song = songs[+b.dataset.one];
+    const scroll = { left: window.scrollX, top: window.scrollY, behavior: 'instant' };
+    selectedDispose = mountPrint(root, {
+      songs: [song], heading: songTitle(song.lesson, song.lesson.steps[song.stepIndex]),
+      onBack: () => {
+        clearSelected();
+        root.replaceChildren(el);
+        window.scrollTo(scroll);
+      },
+    });
+    root.querySelector('[data-back]').setAttribute('aria-label', 'Back to songbook');
     window.print();
   }));
   el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
     pages[+a.dataset.goto].scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
-  window.addEventListener('afterprint', clearOnly);
   const prevTitle = document.title;
   document.title = songs.length === 1 ? `${songTitle(songs[0].lesson, songs[0].lesson.steps[songs[0].stepIndex])} · Piano Tutor` : 'Piano Tutor songbook';
   window.scrollTo(0, 0);
-  return () => { document.title = prevTitle; window.removeEventListener('afterprint', clearOnly); };
+  return () => { clearSelected(); document.title = prevTitle; };
 }
 
 export function printOne(id, stepIndex) {
