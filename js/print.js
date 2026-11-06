@@ -122,7 +122,7 @@ export function mountPrint(root, { songs, heading, onBack, browse = false }) {
     ${browse ? '<div class="songbook-search"><label>Find a song<input type="search" data-search placeholder="Song title, e.g. Give Me Jesus"></label><label>Level<select data-level><option value="">All levels</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label><p data-results role="status"></p></div>' : ''}
     ${songs.length > 1 ? `<nav class="contents" aria-label="Songs"><h2>Songs</h2><ol>${songs.map(({ lesson, stepIndex }, i) => `<li>
       <a href="#" data-goto="${i}">${songTitle(lesson, lesson.steps[stepIndex])}</a>
-      <button class="pill" data-one="${i}" aria-label="Print this song">${icons.print}<span>Print</span></button></li>`).join('')}</ol></nav>` : ''}
+      <button class="pill" data-one="${i}" aria-label="Preview and print this song">${icons.print}<span>Preview</span></button></li>`).join('')}</ol></nav>` : ''}
     <div class="papers"></div>`;
   root.replaceChildren(el);
   const papers = el.querySelector('.papers');
@@ -163,7 +163,8 @@ export function mountPrint(root, { songs, heading, onBack, browse = false }) {
       },
     });
     root.querySelector('[data-back]').setAttribute('aria-label', 'Back to songbook');
-    window.print();
+    // Printing needs a fresh, direct tap after preview rendering on mobile Safari.
+    root.querySelector('[data-print]').focus({ preventScroll: true });
   }));
   el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
