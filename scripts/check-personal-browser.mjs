@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+import {readFile} from 'node:fs/promises';
+import {resolve,extname} from 'node:path';
+import {createRequire} from 'node:module';
+const root=resolve(new URL('..',import.meta.url).pathname);
+const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.pdf':'application/pdf','.mp3':'audio/mpeg'};
+const server=createServer(async(req,res)=>{try{let path=resolve(root,'.'+new URL(req.url,'http://localhost').pathname);if(path===root)path+='/index.html';res.setHeader('Content-Type',types[extname(path)]||'application/octet-stream');res.end(await readFile(path));}catch{res.writeHead(404).end();}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
+let chromium;try{({chromium}=await import('playwright'));}catch(e){if(!process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES)throw e;({chromium}=createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright/package.json')('playwright'));}
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:844,height:390}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+const navigate=async hash=>{await page.goto(origin+'/'+hash);await page.waitForTimeout(120);};
+const data=()=>page.evaluate(async()=>structuredClone((await import('./js/store.js')).store.data));
+try{
+ await navigate('#/');await page.waitForSelector('[data-session]');
+ for(const [width,height]of [[320,740],[390,844],[844,390],[1280,800]]){
+  await page.setViewportSize({width,height});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Home overflows');
+ }
+ await page.setViewportSize({width:390,height:844});
+ await page.locator('[data-session]').click();await page.locator('[data-minutes="5"]').click();
+ assert.equal(await page.locator('.session-stage').count(),4);
+ await page.locator('[data-reflection]').fill('Keep wrists comfortable');await page.reload();
+ assert.equal(await page.locator('[data-reflection]').inputValue(),'Keep wrists comfortable');
+ const before=(await data()).done;
+ await page.locator('[data-open="0"]').click();await page.waitForSelector('.session-dock');
+ await page.getByRole('button',{name:'Back to practice',exact:true}).click();
+ await page.locator('[data-done="0"]').click();await page.locator('[data-skip="1"]').click();
+ assert.equal((await data()).sessions.beginner.stages[0].status,'done');
+ await navigate('#/pieces');await page.locator('[data-add]').click();await page.waitForSelector('.piece-card');
+ await page.locator('[data-note]').fill('<img src=x onerror=alert(1)> Keep the melody clear');
+ await page.locator('[data-stage]').selectOption('Polishing');await page.locator('[data-focus]').click();
+ const piece=Object.values((await data()).repertoire)[0];assert.equal(piece.stage,'Polishing');
+ await page.locator('[data-play]').click();await page.waitForSelector('[data-loop]');
+ await page.locator('[data-stand]').click();
+ await page.waitForSelector('.music-stand .stand-notation svg');
+ assert.equal(await page.locator('.kb-wrap').isVisible(),false);
+ await page.locator('.stand-options summary').click();await page.locator('[data-full]').click();await page.getByLabel('Score size').selectOption('1.25');await page.locator('.stand-options summary').click();
+ await page.getByLabel('First bar').selectOption('2');await page.getByLabel('Last bar').selectOption('3');
+ await page.locator('[data-loop]').click();await page.getByLabel('Practice tempo').selectOption('0.5');
+ if(await page.locator('[data-hand]').count())await page.locator('[data-hand]').click();
+ await page.screenshot({path:'/tmp/piano-personal-stand-portrait.png'});
+ const savedHand=(await data()).repertoire[`${piece.lesson}:${piece.step}`].settings.hand;await page.reload();await page.waitForSelector('.stand-notation svg');if(await page.locator('[data-hand]').count())assert.equal(await page.locator('[data-hand]').innerText(),{both:'Both hands',R:'Right hand',L:'Left hand'}[savedHand]);
+ assert.equal(await page.locator('[data-loop]').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.getByLabel('First bar').inputValue(),'2');assert.equal(await page.getByLabel('Last bar').inputValue(),'3');
+ assert.equal(await page.getByLabel('Score size').inputValue(),'1.25');await page.locator('.stand-options summary').click();
+ assert.equal(await page.locator('[data-speed] [data-v="0.5"]').getAttribute('class'),'on');
+ assert.ok(await page.locator('.stand-notation svg').count()>1,'Full score must have multiple systems');
+ await page.locator('[data-keyboard]').click();await page.locator('.stand-options summary').click();assert.ok(await page.locator('.kb-wrap').isVisible());
+ for(const [width,height]of [[320,740],[844,390],[1280,800]]){
+  await page.setViewportSize({width,height});await page.waitForTimeout(150);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Music stand overflows viewport');
+  await page.screenshot({path:'/tmp/piano-stand-'+width+'.png'}); assert.ok(await page.locator('.stand-score').evaluate(e=>e.clientHeight>60),'Score has insufficient height '+JSON.stringify(await page.locator('.playalong').evaluate(e=>[...e.children].map(n=>({class:n.className,h:n.getBoundingClientRect().height})))));
+ }
+ await page.screenshot({path:'/tmp/piano-personal-stand-landscape.png'});
+ await page.locator('[data-exit]').click();await page.waitForSelector('.music svg');
+ assert.ok(await page.locator('.music-stand').count());
+ await page.evaluate(async()=>{const {Keyboard}=await import('./js/keyboard.js');const set=Keyboard.prototype.setTargets;Keyboard.prototype.setTargets=function(...a){window.personalKeyboard=this;return set.apply(this,a);};});await page.locator('[data-along]').click();await page.waitForSelector('[data-exit]');await page.locator('[data-exit]').click();await page.waitForSelector('.music svg');
+ const scoreBefore=await page.locator('.music').innerHTML();
+ await page.locator('[data-practice-pause]').click();assert.equal(await page.locator('[data-practice-pause]').innerText(),'Resume');
+ await page.evaluate(async()=>{const {findLesson}=await import('./js/lessons/index.js');const {buildPractice}=await import('./js/practice.js');const parts=location.hash.split('/');window.firstPracticeNote=buildPractice(findLesson(parts[2]).lesson.steps[+parts[3]]).moments[0].items[0].midi;window.personalKeyboard.onPress(window.firstPracticeNote);});
+ assert.equal(await page.locator('.music').innerHTML(),scoreBefore,'Pause must stop score advancement');
+ await page.locator('[data-practice-pause]').click();await page.evaluate(()=>window.personalKeyboard.onPress(window.firstPracticeNote));assert.notEqual(await page.locator('.music').innerHTML(),scoreBefore,'Music stand must follow played notes');
+ await page.locator('[data-stand]').click();assert.equal(await page.locator('.music-stand').count(),0);
+ await navigate('#/session');assert.match(await page.locator('[data-stage="3"]').innerText(),/Open section/);
+ await page.locator('[data-revisit]').selectOption({index:1});
+ await page.locator('[data-finish]').click();assert.equal((await data()).sessions.beginner,undefined);
+ assert.deepEqual((await data()).done,before,'Session must not award lesson completion');
+ assert.equal((await data()).sessionHistory.at(-1).completed,1);
+ assert.equal((await data()).nextPractice.beginner.note,'Keep wrists comfortable');
+ await navigate('#/pieces');assert.equal(await page.locator('.piece-card img').count(),0,'Note must be text');
+ assert.match(await page.locator('[data-note]').inputValue(),/<img/);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/piano-personal-pieces.png'});
+ await navigate('#/session');await page.locator('[data-minutes="15"]').click();
+ await page.screenshot({path:'/tmp/piano-personal-session.png'});
+ const backup=await page.evaluate(async()=>(await import('./js/store.js')).store.backup());
+ await page.evaluate(async text=>{const {store}=await import('./js/store.js');store.reset();store.restore(text);},backup);
+ await page.reload();assert.equal((await data()).sessions.beginner.minutes,15);
+ await navigate('#/');await page.locator('[data-course="intermediate"]').click();await page.locator('[data-session]').click();
+ await page.waitForSelector('[data-minutes]');assert.equal(await page.locator('[data-minutes]').count(),3,'Other course should have its own session');
+ await page.locator('[data-minutes="30"]').click();assert.ok((await data()).sessions.beginner);assert.ok((await data()).sessions.intermediate);
+ await navigate('#/technique');assert.equal(await page.locator('.technique-list a').count(),6);
+ for(const link of await page.locator('.technique-list a').all()){assert.equal(await link.getAttribute('target'),'_blank');assert.match(await link.getAttribute('href'),/^https:\/\//);}
+ const twoHand=await page.evaluate(async()=>{const {songbook}=await import('./js/print.js');const {savePiece}=await import('./js/personal.js');const {store}=await import('./js/store.js');const p=songbook('intermediate').find(p=>{const s=p.lesson.steps[p.stepIndex];return s.rh&&s.lh;});savePiece(p.lesson.id,p.stepIndex);store.setting('course','intermediate');return {lesson:p.lesson.id,step:p.stepIndex};});
+ await navigate(`#/play/${twoHand.lesson}/${twoHand.step}`);await page.waitForSelector('[data-hand]');
+ while(await page.locator('[data-hand]').innerText()!=='Right hand')await page.locator('[data-hand]').click();
+ await page.locator('[data-speed] [data-v="1.25"]').click();await page.reload();await page.waitForSelector('[data-hand]');
+ assert.equal(await page.locator('[data-hand]').innerText(),'Right hand');assert.equal(await page.locator('[data-speed] [data-v="1.25"]').getAttribute('class'),'on');
+ assert.equal((await data()).repertoire[`${piece.lesson}:${piece.step}`].settings.speed,0.5,'Other piece tempo must remain independent');
+ assert.deepEqual(errors,[]);console.log('Guided sessions, reflection/reload, course isolation, pieces/notes/stages/focus, saved loops/tempo/hand, full score/zoom/keyboard, four viewports, backups, technique links and script errors passed');
+}finally{await browser.close();await new Promise(r=>server.close(r));}

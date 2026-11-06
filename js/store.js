@@ -10,6 +10,11 @@ const defaults = {
   lastByCourse: {},        // { lesson, step }
   practice: {},      // "2026-10-24" -> true, days with daily practice done
   best: {},          // reading drill -> fastest time in seconds
+  repertoire: {},   // lesson:step -> personal piece, stage, settings and notes
+  focusPieces: {},  // course -> repertoire key
+  sessions: {},     // course -> resumable guided practice
+  sessionHistory: [],
+  nextPractice: {}, // course -> reflection and passage to revisit
   settings: {
     course: 'beginner',
     volume: 0.8,

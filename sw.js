@@ -1,6 +1,6 @@
 // Network first, falling back to cache, so lessons work offline after one visit
 // and updates show up as soon as you're online.
-const CACHE = 'piano-tutor-v19';
+const CACHE = 'piano-tutor-v20';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -15,7 +15,7 @@ self.addEventListener('fetch', (e) => {
       if (res.ok) cache.put(req, res.clone());
       return res;
     } catch {
-      const hit = await cache.match(req, { ignoreSearch: true });
+      const hit = await cache.match(req, { ignoreSearch: true }) || await caches.match(req, { ignoreSearch: true });
       if (hit) return hit;
       throw new Error('offline');
     }

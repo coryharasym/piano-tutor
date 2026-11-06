@@ -175,3 +175,54 @@ https://www.ism.org/advice/how-to-become-a-healthy-instrumentalist/
 and https://www.bapam.org.uk/dont-cramp-your-style/ . The app cannot assess
 physical technique or certify a warm-up as injury prevention. Prompts encourage
 comfortable movement and stopping when anything hurts.
+
+## Personal practice workspace
+
+**Start practice** offers 5-, 15- and 30-minute plans, with suggested allocations
+for warm-up, review, current learning and a familiar piece. Sections open existing
+lessons; learners mark them done or skip them, repeat freely and finish early.
+The plan, reflection and optional passage to revisit survive reloads. Plans are
+separate per course and do not award lesson completion, recital ribbons, reading
+records or the existing Daily Practice streak. The last 100 session summaries
+retain planned minutes and section counts, not a claim of measured playing time.
+
+**My Pieces** holds songs from all three courses. Each arrangement/performance
+step has its own Learning / Polishing / Maintaining stage, practice note, last
+opened date, listening speed and Play along hand, tempo and bar-loop preferences.
+Choose one current focus per course for the familiar-piece section. Stage labels
+are self-assessments. Use the add-song chooser for stable hymn arrangements rather
+than saving a recital whose selected programme can change. The shelf and sessions
+are included in existing progress backups; old backups receive empty defaults.
+
+**Music stand** is available on reading/play exercises and in Play along. It shows
+larger notation, optionally hides the virtual keyboard, and offers following or
+scrollable full-score views. Display options remember score size and keyboard
+visibility. Play along retains Wait/Flow, pause, hand choice and bar loops while
+showing the score, including continuous score following in Flow. The learning view
+remains available. These display controls do not change printed scores or PDFs.
+
+**Technique videos** links to six official teacher pages: Hoffman Academy, Pianote
+and Pianist. Relevant links also appear under More in playing steps. These are
+external full lessons of varying lengths, require internet and open only on tap;
+no video, third-party player or tracking script loads inside Piano Tutor. Links
+were checked November 6, 2026. No clips are downloaded, edited or redistributed.
+
+`npm test` covers personal records, session allocation, completion isolation and
+old/new backups. `npm run test:browser` also covers the new session/piece flows,
+reloads, loops/tempo, score views, external links and four viewport sizes. Physical
+iPhone/keyboard microphone, touch and pedal behaviour still needs device review.
+
+### iPhone landscape layout checks
+
+`node scripts/check-iphone-landscape-browser.mjs` checks touch layouts at
+874×402 and a shorter 874×320 browser viewport, with simulated 62px side and
+21px bottom safe areas. It covers the home, practice session, My Pieces,
+free-play, metronome, songbook, chapter notes, settings, both playing views,
+display menus, keyboard visibility and the session dock. Screenshots go to
+`PIANO_SCREENSHOT_DIR` (or a temporary directory). This is browser emulation,
+not a physical iPhone/Safari or microphone test.
+
+Landscape layouts reserve more room for the score, fit following notation to
+its available height and size the lesson above the measured session dock.
+Instructions remain under More when the short playing view hides the text.
+Menus and dialogs respect safe areas; full scores remain scrollable.

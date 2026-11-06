@@ -10,6 +10,8 @@ import { toMidi, isBlack } from './theory.js';
 import { store } from './store.js';
 import { icons } from './icons.js';
 import { ChordCoach } from './chord-coach.js';
+import { mountStandTools, renderStandScore } from './music-stand.js';
+import { savedPiece, rememberSettings, savePiece } from './personal.js';
 
 const LOOKAHEAD = 4;        // beats visible above the keyboard
 const WINDOW = 0.38;        // seconds either side of a note that still count as "on time"
@@ -17,11 +19,12 @@ const MIC_LATENCY = 0.12;   // the mic hears a note a little after it's played
 
 export const SPEEDS = [[0.5, '½×'], [0.75, '¾×'], [1, '1×'], [1.25, '1¼×'], [1.5, '1½×']];
 
-export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = () => {} }) {
+export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = true, micButton, onExit, onCalibrate = () => {} }) {
+  const saved = lessonId ? savedPiece(lessonId,stepIndex)?.settings : null;
   let { moments, lyrics, totalBeats } = buildPractice(step);
   const pulse=meterPulse(step.time||'4/4');
   const bars = loopBars(step).bars;
-  let looping = false, pass = 1;
+  let looping = !!saved?.loop, pass = 1;
   let accompaniment = [];
   let items = moments.flatMap((m, mi) => m.items.map((it) => ({ ...it, beat: m.beat, moment: mi, state: 'pending' })));
   // One hand at a time: the app plays the other hand's notes itself.
@@ -29,8 +32,8 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   let lastBeat = totalBeats;
   const prefs = {
     mode: store.setting('playMode') || 'wait',
-    speed: store.setting('playSpeed') || 0.75,
-    hand: twoHands ? store.setting('playHand') || 'both' : 'both',
+    speed: saved?.speed || store.setting('playSpeed') || 0.75,
+    hand: twoHands ? saved?.hand || store.setting('playHand') || 'both' : 'both',
   };
   const HANDS = { both: 'Both hands', R: 'Right hand', L: 'Left hand' };
   const mine = () => items.filter((it) => !it.auto);
@@ -62,6 +65,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
       <div class="mic-chord-help" hidden><span>Octave notes need a quick, one-time microphone calibration.</span> <button class="pill" data-chord-calibrate>Calibrate these keys</button></div>
       <div class="chord-coach" hidden></div>
     </div>
+    <section class="stand-score" aria-label="Sheet music"><div class="stand-count" role="status"></div><div class="stand-notation"></div></section>
     <section class="fall-wrap">
       <canvas class="fall"></canvas>
       <div class="fall-hud"><span class="count"></span><span class="score"></span></div>
@@ -78,6 +82,30 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   const hudCount = el.querySelector('.count');
   const hudScore = el.querySelector('.score');
   const chordHelp = el.querySelector('.mic-chord-help');
+  const scorePractice = buildPractice(step);
+  let scoreKey='';
+  const tempoControl=lessonId?document.createElement('label'):null;
+  if(tempoControl){
+    tempoControl.className='stand-tempo';
+    tempoControl.innerHTML=`Tempo <select aria-label="Practice tempo">${SPEEDS.map(([v])=>`<option value="${v}">${Math.round((step.tempo||80)*v)} BPM (${Math.round(v*100)}%)</option>`).join('')}</select>`;
+    tempoControl.querySelector('select').value=String(prefs.speed);
+    tempoControl.querySelector('select').addEventListener('change',e=>{prefs.speed=+e.target.value;store.setting('playSpeed',prefs.speed);persist();paintSeg();});
+    el.querySelector('.loop-controls').appendChild(tempoControl);
+  }
+  const standPrefs=lessonId ? mountStandTools(el.querySelector('.loop-controls'),el,()=>{scoreKey='';drawScore();}) : null;
+  if(lessonId && step.song && allowSave) {
+    const save=document.createElement('button');save.className='pill';save.dataset.savePiece='';
+    save.textContent=savedPiece(lessonId,stepIndex)?'Saved in My Pieces':'Save piece';
+    save.addEventListener('click',()=>{savePiece(lessonId,stepIndex);persist();save.textContent='Saved in My Pieces';});
+    el.querySelector('.loop-controls').appendChild(save);
+  }
+  if(saved){
+    el.querySelector('[data-loop-from]').value=String(Math.max(1,Math.min(bars.length,saved.from||1)));
+    el.querySelector('[data-loop-to]').value=String(Math.max(+el.querySelector('[data-loop-from]').value,Math.min(bars.length,saved.to||bars.length)));
+  }
+  el.querySelector('[data-loop]').textContent=looping?'Loop on':'Loop off';
+  el.querySelector('[data-loop]').setAttribute('aria-pressed',String(looping));
+  function persist(){if(lessonId)rememberSettings(lessonId,stepIndex,{speed:prefs.speed,hand:prefs.hand,loop:looping,from:+el.querySelector('[data-loop-from]').value,to:+el.querySelector('[data-loop-to]').value});}
   const chordCoach = new ChordCoach(el.querySelector('.chord-coach'), { levelSource: listener, onChange: () => listener.clearRecent() });
   let calibrationKeys = [];
   el.querySelector('[data-chord-calibrate]').addEventListener('click', () => {
@@ -121,6 +149,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     el.querySelectorAll('[data-speed] button').forEach((b) => b.classList.toggle('on', +b.dataset.v === prefs.speed));
     const handBtn = el.querySelector('[data-hand]');
     if (handBtn) handBtn.textContent = HANDS[prefs.hand];
+    if(tempoControl)tempoControl.querySelector('select').value=String(prefs.speed);
   }
 
   // ---- input
@@ -248,6 +277,17 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     kb.setTargets(soon.map((it) => ({ midi: it.midi, finger: it.finger, hand: it.hand })));
   }
 
+  function drawScore(){
+    if(!standPrefs?.enabled)return;
+    const following=moments.findIndex(m=>m.beat>beat);
+    const at=prefs.mode==='wait'?Math.min(nextMoment,moments.length-1):following<0?moments.length-1:Math.max(0,following-1);
+    const cur=moments[at]?.items[0];
+    const key=[cur?.staff,cur?.index,standPrefs.full,standPrefs.zoom,el.clientWidth,el.querySelector('.stand-notation').clientHeight].join(':');
+    el.querySelector('.stand-count').textContent=step.title+' · '+(beat<0&&running?'Count in: '+Math.ceil(-beat/pulse.unit):finished?'Practice complete':!running?'Paused':`${looping?'Pass '+pass+' · ':''}${prefs.mode==='wait'?'Wait':'Flow'}`);
+    if(key===scoreKey)return;scoreKey=key;
+    renderStandScore(el.querySelector('.stand-notation'),{staves:scorePractice.staves,key:step.key||'C',time:step.time||'4/4',pickup:step.pickup,current:cur?{staff:cur.staff,index:cur.index}:null,showFingers:!!step.showFingers,showNames:!!step.names},standPrefs);
+  }
+
   function finish() {
     finished = true;
     const hits = items.filter((it) => it.state === 'hit').length;
@@ -280,6 +320,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
   }
 
   function draw() {
+    if(standPrefs?.enabled){drawScore();return;}
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.clientWidth, H = canvas.clientHeight;
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
@@ -365,11 +406,13 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     looping = !looping;
     e.currentTarget.textContent = looping ? 'Loop on' : 'Loop off';
     e.currentTarget.setAttribute('aria-pressed', String(looping)); reset();
+    persist();
   });
   for (const edge of ['from','to']) el.querySelector(`[data-loop-${edge}]`).addEventListener('change', () => {
     const from = el.querySelector('[data-loop-from]'), to = el.querySelector('[data-loop-to]');
     if (+from.value > +to.value) { if (edge === 'from') to.value = from.value; else from.value = to.value; }
     if (looping) reset();
+    persist();
   });
   el.querySelector('[data-pause]').addEventListener('click', e => {
     if (finished) return;
@@ -384,13 +427,16 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     const order = Object.keys(HANDS);
     prefs.hand = order[(order.indexOf(prefs.hand) + 1) % order.length];
     store.setting('playHand', prefs.hand);
+    persist();
     reset();
   });
   el.querySelectorAll('[data-speed] button').forEach((b) => b.addEventListener('click', () => {
     prefs.speed = +b.dataset.v; store.setting('playSpeed', prefs.speed); paintSeg();
+    persist();
   }));
 
   reset();
+  persist();
   raf = requestAnimationFrame(tick);
 
   return () => {
@@ -399,6 +445,7 @@ export function mountPlayAlong(root, step, { micButton, onExit, onCalibrate = ()
     clearInterval(chordTimer);
     listener.onNote.delete(onNote);
     chordCoach.dispose();
+    standPrefs?.disposeMenu();
   };
 }
 
