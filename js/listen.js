@@ -135,7 +135,10 @@ export class Listener {
     const octavePair = this.hasOctavePair(midis);
     this.analyser.getFloatFrequencyData(this.freq);
     const audible = rms(this.time) > Math.max(0.003, this.tracker.noiseFloor * 3.5);
-    const evidence = audible ? spectrumNoteEvidence(this.freq, this.rate, this.analyser.fftSize, midis) : [];
+    const assisted = easy && !strict;
+    const evidence = !audible ? [] : assisted
+      ? midis.filter(m => spectrumNoteEvidence(this.freq, this.rate, this.analyser.fftSize, [m]).includes(m))
+      : spectrumNoteEvidence(this.freq, this.rate, this.analyser.fftSize, midis);
     const modelHeard = audible && this.chordModel?.(this.freq);
     // A complete calibration remains the authority when available, and
     // octaves always need it. Per-note partials still explain what is audible
@@ -144,7 +147,6 @@ export class Listener {
     const complete = !!modelHeard || (!this.chordModel && !octavePair && detected.length === new Set(midis).size && midis.length > 0);
     // Assisted practice accepts a stable expected fundamental even when the
     // combined waveform has no reliable single-note pitch. Flow stays strict.
-    const assisted = easy && !strict;
     const heardAll = this.chords.push(midis, detected, { now, audible, complete, strict, requireComplete: octavePair || !!this.chordModel });
     const heard = assisted ? this.chords.detected.length > 0 && detected.length > 0 : heardAll;
     this.chordStatus = { detected: this.chords.detected, audible };
