@@ -21,7 +21,7 @@ import { ChordCoach } from './chord-coach.js';
 import { mountSession, mountPieces, mountTechnique, sessionDock } from './workspace.js';
 import { savePiece, savedPiece, visitPiece, escapeHTML, rememberSettings } from './personal.js';
 import { relatedTechnique } from './technique.js';
-import { mountStandTools, renderStandScore } from './music-stand.js';
+import { mountStandTools, renderStandScore, bindPracticeMenu } from './music-stand.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $('#app');
@@ -696,6 +696,7 @@ function renderPlay(step, ctx) {
   let userPaused = false;
   let standPrefs;
   if (!step.anyNote && !step.anyOrder) standPrefs=mountStandTools($('.play-head',el),ctx.el,()=>{music.innerHTML='';drawMusic();});
+  if(standPrefs)disposers.push(standPrefs.disposeMenu);
   const personalTools=h('<div class="practice-personal-tools"></div>');
   $('.play-head',el).appendChild(personalTools);
   if (step.song && !ctx.lesson.daily && !ctx.lesson.warmup && !ctx.lesson.recital) {
@@ -704,7 +705,10 @@ function renderPlay(step, ctx) {
   }
   const video=relatedTechnique(ctx.lesson.title+' '+step.title);
   const more=h(`<details><summary>More</summary><div class="secondary-tools"><a href="${escapeHTML(video.url)}" target="_blank" rel="noopener noreferrer">Technique: ${escapeHTML(video.title)} ↗</a><button class="pill" data-my-pieces>My Pieces</button></div></details>`);
+  const instruction=h('<p class="compact-instruction"></p>');instruction.textContent=step.say||'';
+  $('.secondary-tools',more).prepend(instruction);
   more.querySelector('[data-my-pieces]').onclick=()=>go('#/pieces');personalTools.appendChild(more);
+  disposers.push(bindPracticeMenu(more));
 
   const kb = new Keyboard(kbWrap, { lo: range[0], hi: range[1], labels, onPress: (m) => input(m, 'tap') });
 
@@ -712,7 +716,7 @@ function renderPlay(step, ctx) {
   const strip = !step.staff && !step.anyNote;
   function drawMusic() {
     const alongLabel=$('[data-along] span',el);
-    if(alongLabel)alongLabel.textContent=standPrefs?.enabled?'Passage practice':'Play along';
+    if(alongLabel)alongLabel.textContent=standPrefs?.enabled?(window.matchMedia('(orientation:landscape) and (max-height:460px)').matches?'Passage':'Passage practice'):'Play along';
     if (step.anyNote) {
       music.innerHTML = `<div class="big-prompt">${finished ? 'Heard you!' : 'Play any key'}</div>`;
       return;

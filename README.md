@@ -211,3 +211,18 @@ were checked November 6, 2026. No clips are downloaded, edited or redistributed.
 old/new backups. `npm run test:browser` also covers the new session/piece flows,
 reloads, loops/tempo, score views, external links and four viewport sizes. Physical
 iPhone/keyboard microphone, touch and pedal behaviour still needs device review.
+
+### iPhone landscape layout checks
+
+`node scripts/check-iphone-landscape-browser.mjs` checks touch layouts at
+874×402 and a shorter 874×320 browser viewport, with simulated 62px side and
+21px bottom safe areas. It covers the home, practice session, My Pieces,
+free-play, metronome, songbook, chapter notes, settings, both playing views,
+display menus, keyboard visibility and the session dock. Screenshots go to
+`PIANO_SCREENSHOT_DIR` (or a temporary directory). This is browser emulation,
+not a physical iPhone/Safari or microphone test.
+
+Landscape layouts reserve more room for the score, fit following notation to
+its available height and size the lesson above the measured session dock.
+Instructions remain under More when the short playing view hides the text.
+Menus and dialogs respect safe areas; full scores remain scrollable.

@@ -56,7 +56,9 @@ export function sessionDock(root,{go,onDispose,lessonId}) {
   if(stage.target?.lesson!==lessonId)return;
   const dock=node(`<aside class="session-dock" aria-label="Practice session"><span>${esc(stage.title)} · ${stage.minutes} min suggested</span><button class="pill">Back to practice</button></aside>`);
   dock.querySelector('button').onclick=()=>go('#/session');root.classList.add('with-session');document.body.appendChild(dock);
-  onDispose(()=>{dock.remove();root.classList.remove('with-session');});
+  const measure=()=>root.style.setProperty('--session-dock-height',`${dock.getBoundingClientRect().height}px`);
+  const observer=new ResizeObserver(measure);observer.observe(dock);measure();
+  onDispose(()=>{observer.disconnect();dock.remove();root.classList.remove('with-session');root.style.removeProperty('--session-dock-height');});
 }
 export function mountPieces(root,{go,onBack}) {
   const main=shell(root,'My Pieces',onBack);

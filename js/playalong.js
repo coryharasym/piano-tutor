@@ -282,7 +282,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     const following=moments.findIndex(m=>m.beat>beat);
     const at=prefs.mode==='wait'?Math.min(nextMoment,moments.length-1):following<0?moments.length-1:Math.max(0,following-1);
     const cur=moments[at]?.items[0];
-    const key=[cur?.staff,cur?.index,standPrefs.full,standPrefs.zoom,el.clientWidth].join(':');
+    const key=[cur?.staff,cur?.index,standPrefs.full,standPrefs.zoom,el.clientWidth,el.querySelector('.stand-notation').clientHeight].join(':');
     el.querySelector('.stand-count').textContent=step.title+' · '+(beat<0&&running?'Count in: '+Math.ceil(-beat/pulse.unit):finished?'Practice complete':!running?'Paused':`${looping?'Pass '+pass+' · ':''}${prefs.mode==='wait'?'Wait':'Flow'}`);
     if(key===scoreKey)return;scoreKey=key;
     renderStandScore(el.querySelector('.stand-notation'),{staves:scorePractice.staves,key:step.key||'C',time:step.time||'4/4',pickup:step.pickup,current:cur?{staff:cur.staff,index:cur.index}:null,showFingers:!!step.showFingers,showNames:!!step.names},standPrefs);
@@ -445,6 +445,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     clearInterval(chordTimer);
     listener.onNote.delete(onNote);
     chordCoach.dispose();
+    standPrefs?.disposeMenu();
   };
 }
 

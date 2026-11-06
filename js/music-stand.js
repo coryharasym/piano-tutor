@@ -4,6 +4,18 @@ import { renderStaff } from './staff.js';
 export function standPreferences() {
   return {enabled:!!store.setting('musicStand'),full:!!store.setting('fullScore'),zoom:[1,1.25,1.5].includes(store.setting('scoreZoom'))?store.setting('scoreZoom'):1,keyboard:store.setting('standKeyboard')===true};
 }
+export function bindPracticeMenu(details) {
+  const place=()=>{
+    if(!details.open)return;
+    details.style.setProperty('--practice-menu-top',`${details.querySelector('summary').getBoundingClientRect().bottom+4}px`);
+  };
+  const outside=e=>{if(!details.contains(e.target))details.open=false;};
+  const escape=e=>{if(e.key==='Escape'){details.open=false;details.querySelector('summary').focus();}};
+  details.addEventListener('toggle',place);window.addEventListener('resize',place);
+  window.visualViewport?.addEventListener('resize',place);
+  document.addEventListener('pointerdown',outside);details.addEventListener('keydown',escape);
+  return ()=>{details.removeEventListener('toggle',place);window.removeEventListener('resize',place);window.visualViewport?.removeEventListener('resize',place);document.removeEventListener('pointerdown',outside);details.removeEventListener('keydown',escape);};
+}
 export function mountStandTools(host,lessonEl,onChange) {
   const prefs=standPreferences();
   const tools=document.createElement('div');tools.className='stand-tools';
@@ -25,11 +37,13 @@ export function mountStandTools(host,lessonEl,onChange) {
   tools.querySelector('[data-full]').onclick=()=>{prefs.full=!prefs.full;store.setting('fullScore',prefs.full);paint();onChange();};
   tools.querySelector('[data-keyboard]').onclick=()=>{prefs.keyboard=!prefs.keyboard;store.setting('standKeyboard',prefs.keyboard);paint();onChange();};
   tools.querySelector('[data-zoom]').onchange=e=>{prefs.zoom=Number(e.target.value);store.setting('scoreZoom',prefs.zoom);onChange();};
+  prefs.disposeMenu=bindPracticeMenu(tools.querySelector('details'));
   paint();return prefs;
 }
 // Use the existing notation renderer without changing print or chapter-note layouts.
 export function renderStandScore(el,opts,prefs) {
   const oldScroll=el.scrollTop;
+  el.classList.toggle('score-follow',!prefs.full);
   const width=Math.max(260,Math.floor((el.clientWidth||600)/prefs.zoom));
   const per=Math.max(1,Math.min(4,Math.floor((width-100)/180)));
   el.innerHTML='';
@@ -39,6 +53,11 @@ export function renderStandScore(el,opts,prefs) {
     const line=document.createElement('div');line.className='stand-system';el.appendChild(line);
     renderStaff(line,{...opts,width,maxBars:per,bars:[from,from+per]});
   }
-  el.querySelectorAll('svg').forEach(svg=>{svg.style.width=`${width*prefs.zoom}px`;svg.style.height='auto';});
+  el.querySelectorAll('svg').forEach(svg=>{
+    svg.style.width=`${width*prefs.zoom}px`;svg.style.height='auto';
+    // A complete system must be visible before scrolling to the next one,
+    // even when the keyboard and session bar share a short phone screen.
+    if(prefs.full)svg.style.maxHeight=`${Math.max(48,el.clientHeight-16)}px`;
+  });
   el.scrollTop=oldScroll;
 }
