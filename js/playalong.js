@@ -106,7 +106,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
   el.querySelector('[data-loop]').textContent=looping?'Loop on':'Loop off';
   el.querySelector('[data-loop]').setAttribute('aria-pressed',String(looping));
   function persist(){if(lessonId)rememberSettings(lessonId,stepIndex,{speed:prefs.speed,hand:prefs.hand,loop:looping,from:+el.querySelector('[data-loop-from]').value,to:+el.querySelector('[data-loop-to]').value});}
-  const chordCoach = new ChordCoach(el.querySelector('.chord-coach'), { levelSource: listener, onChange: () => listener.clearRecent() });
+  const chordCoach = new ChordCoach(el.querySelector('.chord-coach'), { levelSource: listener, getEasy: () => store.setting('easyChords'), setEasy: value => store.setting('easyChords', value), onChange: () => listener.clearRecent() });
   let calibrationKeys = [];
   el.querySelector('[data-chord-calibrate]').addEventListener('click', () => {
     if (calibrationKeys.length > 1) onCalibrate(calibrationKeys);
@@ -154,7 +154,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
 
   // ---- input
   function input(midi, source) {
-    if (listener.calibrating && source === 'mic') return;
+    if (source === 'mic' && (!listener.active || listener.calibrating || performance.now() < listener.muteUntil)) return;
     if (!running || finished || beat < 0) { kb.flash(midi, 'press'); return; }
     const anyOctave = store.setting('anyOctave');
     const now = beat - (source === 'mic' ? MIC_LATENCY * bps() : 0);
@@ -165,6 +165,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
         .sort((a, b) => a.distance - b.distance)[0]?.i;
       if (items.filter(it => it.moment === target && !it.auto).length > 1) {
         kb.flash(midi, 'press');
+        chordCoach.update(items.filter(it => it.moment === target && !it.auto).map(it => it.midi), {}, { canAssist: prefs.mode === 'wait' });
         if (prefs.mode === 'wait' && chordCoach.takeNote(midi)) {
           assistedChords++;
           items.filter(it => it.moment === target && !it.auto).forEach(it => { it.state = 'hit'; kb.flash(it.midi, 'good'); });
@@ -212,7 +213,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     chordHelp.hidden = want.length < 2 || !listener.needsChordCalibration?.(calibrationKeys);
     const eligible = want.length > 1 && want.some(it => it.state === 'pending');
     if (!eligible) { chordCoach.reset(); return; }
-    if (chordCoach.assisted) { chordCoach.update(calibrationKeys, {}, { canAssist: prefs.mode === 'wait' }); return; }
+    if (chordCoach.assisted || chordCoach.easy) { chordCoach.update(calibrationKeys, {}, { canAssist: prefs.mode === 'wait' }); return; }
     const heardChord = listener.chordHeard(calibrationKeys, { strict: prefs.mode === 'flow' });
     chordCoach.update(calibrationKeys, listener.chordStatus, { canAssist: prefs.mode === 'wait' });
     if (heardChord) {
@@ -296,7 +297,7 @@ export function mountPlayAlong(root, step, { lessonId, stepIndex, allowSave = tr
     const pct = Math.round((hits / total) * 100);
     const line = prefs.mode === 'flow'
       ? `<b>${hits} of ${total}</b> notes on time (${pct}%)`
-      : `<b>All ${total} notes</b> played${assistedChords ? `, with separate-note assistance on ${assistedChords} chord${assistedChords > 1 ? 's' : ''}` : wrong ? `, with ${wrong} wrong note${wrong > 1 ? 's' : ''} along the way` : ' with no wrong notes'}`;
+      : `${assistedChords ? 'Passage completed' : `<b>All ${total} notes</b> played`}${assistedChords ? `, with chord assistance on ${assistedChords} chord${assistedChords > 1 ? 's' : ''}` : wrong ? `, with ${wrong} wrong note${wrong > 1 ? 's' : ''} along the way` : ' with no wrong notes'}`;
     const praise = prefs.mode === 'flow'
       ? (pct >= 90 ? 'Superb!' : pct >= 70 ? 'Nice playing!' : 'Good start!')
       : (assistedChords ? 'Practice complete' : wrong === 0 ? 'Perfect!' : 'Well done!');

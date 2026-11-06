@@ -16,7 +16,7 @@ globalThis.window={devicePixelRatio:1};
 globalThis.getComputedStyle=()=>({getPropertyValue:()=> '#000'});
 let frame; globalThis.requestAnimationFrame=fn=>(frame=fn,1);globalThis.cancelAnimationFrame=()=>{};
 let clock=0;globalThis.performance={now:()=>clock};
-const listener={onNote:new Set(),active:false,clearRecent(){},chordHeard:()=>false};
+const listener={onNote:new Set(),active:true,clearRecent(){},chordHeard:()=>false};
 const piano={chime(){},play:()=>({stop(){}})};
 const store={setting:()=>undefined};
 class Keyboard {constructor(){this.keys=new Map();} setTargets(){} flash(){}}
