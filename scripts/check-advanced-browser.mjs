@@ -22,11 +22,11 @@ const goLesson=async(id,i)=>{
 };
 try {
  await page.goto(origin+'/');
- assert.equal(await page.locator('[data-course]').count(),3);
+ await page.locator('[data-menu]').click();assert.equal(await page.locator('[data-course]').count(),3);
  await page.getByRole('button',{name:'Advanced',exact:true}).click();
  assert.equal(await page.locator('.unit:not(.hymns)').count(),8);
- assert.equal(await page.locator('[data-course="advanced"]').getAttribute('aria-pressed'),'true');
- await page.reload();assert.equal(await page.locator('[data-course="advanced"]').getAttribute('aria-pressed'),'true');
+ await page.locator('[data-menu]').click();assert.equal(await page.locator('[data-course="advanced"]').getAttribute('aria-pressed'),'true');await page.locator('[data-close]').click();
+ await page.reload();await page.locator('[data-menu]').click();assert.equal(await page.locator('[data-course="advanced"]').getAttribute('aria-pressed'),'true');await page.locator('[data-close]').click();
  for(const [width,height]of [[390,844],[844,390],[1280,800]]){
   await page.setViewportSize({width,height});
   for(const control of await page.locator('.head-actions button,[data-course]').all()) {const b=await control.boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width+1,'Home control outside viewport');assert.ok(await control.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Home control label overflows its button');}
@@ -41,9 +41,9 @@ try {
  assert.deepEqual(errors,[]);console.log('Rendered '+screens+' advanced screens without script errors');
  // Separate resume points survive changing course and reloading.
  for(const id of ['mary','int-triplets','adv-two-against-three'])await goLesson(id,1);
- await page.goto(origin+'/#/');await page.waitForSelector('[data-course]');
+ await page.goto(origin+'/#/');await page.waitForSelector('[data-menu]');
  for(const [course,title]of [['Beginner',/Mary/],['Intermediate',/Three notes/],['Advanced',/Coordinate two against three/]]){
-  await page.getByRole('button',{name:course,exact:true}).click();assert.match(await page.locator('.continue-card').innerText(),title);
+  await page.locator('[data-menu]').click();await page.getByRole('button',{name:course,exact:true}).click();assert.match(await page.locator('.continue-card').innerText(),title);
  }
  await page.locator('[data-menu]').click();await page.locator('[data-notes]').click();await page.waitForSelector('.notes-chapter');assert.equal(await page.locator('.notes-chapter').count(),8);assert.match(await page.locator('.notes-bar h1').innerText(),/Advanced/);
  const links=await page.locator('a[download]').evaluateAll(as=>as.map(a=>a.href));assert.equal(links.length,9);
@@ -75,7 +75,7 @@ try {
  for(const i of indices.slice(0,-1)){await perform(i);await page.locator('[data-next]').click();}
  await perform(indices.at(-1));await page.locator('[data-next]').click();
  assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('piano-tutor:v1')).done['adv-recital-a8']));
- await page.goto(origin+'/#/');await page.waitForSelector('[data-course]');
+ await page.goto(origin+'/#/');await page.waitForSelector('[data-menu]');
  // Daily practice uses advanced progress and records an advanced-specific day.
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('piano-tutor:v1'));s.done['adv-readiness']=true;localStorage.setItem('piano-tutor:v1',JSON.stringify(s));});await page.reload();
  await page.locator('[data-menu]').click();await page.locator('.daily-card').click();await page.waitForSelector('.stage');assert.match(await page.locator('.top-title').innerText(),/Advanced daily review/);

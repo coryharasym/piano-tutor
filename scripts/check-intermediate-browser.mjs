@@ -16,9 +16,9 @@ const page=await browser.newPage({viewport:{width:844,height:390}}); const error
 try {
  await page.goto(origin+'/');
  assert.equal(await page.locator('.unit:not(.hymns)').count(),7);
- await page.getByRole('button',{name:'Intermediate',exact:true}).click();
+ await page.locator('[data-menu]').click();await page.getByRole('button',{name:'Intermediate',exact:true}).click();
  assert.equal(await page.locator('.unit:not(.hymns)').count(),8);
- assert.equal(await page.locator('[data-course="intermediate"]').getAttribute('aria-pressed'),'true');
+ await page.locator('[data-menu]').click();assert.equal(await page.locator('[data-course="intermediate"]').getAttribute('aria-pressed'),'true');await page.locator('[data-close]').click();
  await page.reload();assert.equal(await page.locator('.unit:not(.hymns)').count(),8);
  // Seed old progress and verify that both courses retain an independent resume point.
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('piano-tutor:v1'));s.done.welcome=true;s.last={lesson:'mary',step:1};s.lastByCourse={beginner:s.last};localStorage.setItem('piano-tutor:v1',JSON.stringify(s));});await page.reload();
@@ -38,9 +38,9 @@ try {
  await page.getByLabel('First bar').selectOption('1');await page.getByLabel('Last bar').selectOption('1');await page.getByRole('button',{name:'Loop off'}).click();
  assert.equal(await page.locator('[data-loop]').getAttribute('aria-pressed'),'true');
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByRole('button',{name:'Resume',exact:true}).click();
- await page.goto(origin+'/#/');await page.getByRole('button',{name:'Beginner',exact:true}).click();
+ await page.goto(origin+'/#/');await page.locator('[data-menu]').click();await page.getByRole('button',{name:'Beginner',exact:true}).click();
  assert.match(await page.locator('.continue-card').innerText(),/Mary/);
- await page.getByRole('button',{name:'Intermediate',exact:true}).click();assert.match(await page.locator('.continue-card').innerText(),/Three notes/);
+ await page.locator('[data-menu]').click();await page.getByRole('button',{name:'Intermediate',exact:true}).click();assert.match(await page.locator('.continue-card').innerText(),/Three notes/);
  for(const [width,height]of [[390,844],[844,390],[1280,800]]) {
    await page.setViewportSize({width,height});
    for(const control of await page.locator('.head-actions button,[data-course]').all()) {

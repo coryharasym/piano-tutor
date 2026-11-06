@@ -77,7 +77,7 @@ try{
  const backup=await page.evaluate(async()=>(await import('./js/store.js')).store.backup());
  await page.evaluate(async text=>{const {store}=await import('./js/store.js');store.reset();store.restore(text);},backup);
  await page.reload();assert.equal((await data()).sessions.beginner.minutes,15);
- await navigate('#/');await page.locator('[data-course="intermediate"]').click();await page.locator('[data-session]').click();
+ await navigate('#/');await page.locator('[data-menu]').click();await page.locator('[data-course="intermediate"]').click();await page.locator('[data-session]').click();
  await page.waitForSelector('[data-minutes]');assert.equal(await page.locator('[data-minutes]').count(),3,'Other course should have its own session');
  await page.locator('[data-minutes="30"]').click();assert.ok((await data()).sessions.beginner);assert.ok((await data()).sessions.intermediate);
  await navigate('#/technique');assert.equal(await page.locator('.technique-list a').count(),6);

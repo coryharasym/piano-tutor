@@ -147,9 +147,6 @@ function showHome() {
       <div class="head-actions"><button class="pill home-menu-button" data-menu aria-haspopup="dialog" aria-expanded="false">Menu</button></div>
     </header>
     <div class="home-course-row">
-      <nav class="course-switch" aria-label="Course level">
-        ${Object.entries(COURSES).map(([id,info])=>`<button class="pill" data-course="${id}" aria-pressed="${course===id}">${info.label}</button>`).join('')}
-      </nav>
       <p class="home-progress muted">${doneCount} of ${total} lessons complete</p>
     </div>
     <section class="continue home-primary" aria-label="Continue learning or start practice">
@@ -210,7 +207,6 @@ function showHome() {
   units.appendChild(hymns);
 
   el.querySelectorAll('[data-songbook]').forEach(b=>b.addEventListener('click',()=>go('#/songbook')));
-  el.querySelectorAll('[data-course]').forEach(b=>b.addEventListener('click',()=>{store.setting('course',b.dataset.course);route();}));
   app.replaceChildren(el);
   // Bring the next lesson into view in its row.
   requestAnimationFrame(() => {
@@ -238,6 +234,12 @@ function showHomeMenu(onClose) {
   const readingReady=store.isDone('treble-reading')||course!=='beginner';
   const dlg=h(`<div class="sheet-backdrop home-menu"><div class="sheet" role="dialog" aria-label="Piano Tutor menu">
     <div class="sheet-head"><h2>Menu</h2><button class="icon-btn" data-close aria-label="Close menu">${icons.x}</button></div>
+    <section class="menu-course" aria-labelledby="menu-course-title">
+      <h3 id="menu-course-title">Course level</h3>
+      <div class="menu-course-options" role="group" aria-label="Course level">
+        ${Object.entries(COURSES).map(([id,info])=>`<button class="pill" data-course="${id}" aria-pressed="${course===id}">${info.label}</button>`).join('')}
+      </div>
+    </section>
     <nav class="home-menu-groups" aria-label="Piano Tutor tools">
       <section><h3>Music &amp; resources</h3>
         <button class="menu-link" data-songbook>Songbook<small>Browse and print your course songs</small></button>
@@ -259,6 +261,7 @@ function showHomeMenu(onClose) {
   const close=mountSheet(dlg,onClose);disposers.push(close);
   $('[data-close]',dlg).addEventListener('click',close);
   dlg.addEventListener('click',e=>{if(e.target===dlg)close();});
+  dlg.querySelectorAll('[data-course]').forEach(b=>b.addEventListener('click',()=>{store.setting('course',b.dataset.course);close();route();}));
   const routes={'data-songbook':'#/songbook','data-notes':'#/notes/'+info.notes,'data-technique':'#/technique','data-free':'#/free','data-metronome':'#/metronome','data-drill':'#/lesson/drill/0','data-daily':'#/lesson/daily/0'};
   for(const [attribute,hash]of Object.entries(routes))$(`[${attribute}]`,dlg).addEventListener('click',()=>{close();go(hash);});
   $('[data-settings]',dlg).addEventListener('click',()=>{close();showSettings();});
