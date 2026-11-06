@@ -131,7 +131,6 @@ function toast(msg) {
 function showHome() {
   keepAwake(false);
   const course=validCourse(store.setting('course'));
-  const courseInfo=COURSES[course];
   const selectedUnits=courseUnits(course);
   const savedLast=store.data.lastByCourse?.[course] || store.data.last;
   const last = savedLast && (findLesson(savedLast.lesson)?.unit.course||findLesson(savedLast.lesson)?.lesson.course)===course ? savedLast : null;
@@ -139,70 +138,50 @@ function showHome() {
   const total = selectedUnits.reduce((n, u) => n + u.lessons.length, 0);
   const doneCount = selectedUnits.flatMap(u=>u.lessons).filter(l=>store.isDone(l.id)).length;
 
-  const el = h(`<main class="home">
-    <header class="home-head">
-      <div>
-        <h1>Piano Tutor</h1>
-        <p class="muted">${doneCount ? `${doneCount} of ${total} lessons complete` : courseInfo.subtitle}</p>
-      </div>
-      <div class="head-actions">
-        <button class="pill" data-free>${icons.piano}<span>Free play</span></button>
-        <button class="pill" data-songbook>${icons.book}<span>Songbook</span></button>
-        <button class="pill" data-pieces>My Pieces</button>
-        <button class="pill" data-technique>Technique videos</button>
-        <button class="pill" data-notes>${icons.book}<span>Chapter notes</span></button>
-        <button class="icon-btn" data-settings aria-label="Settings">${icons.gear}</button>
-      </div>
-    </header>
-    <nav class="course-switch" aria-label="Course level">
-      ${Object.entries(COURSES).map(([id,info])=>`<button class="pill" data-course="${id}" aria-pressed="${course===id}">${info.label}</button>`).join('')}
-      <p class="muted">${courseInfo.description}</p>
-    </nav>
-    <section class="continue"></section>
-    <section class="units"></section>
-  </main>`);
-
-  const cont = $('.continue', el);
-  const sessionCard=h(`<section class="session-launch"><div><span class="eyebrow">Your daily routine</span><h2>Make time for music</h2><p>5, 15 or 30 minutes · Warm-up, review, learning and a song</p></div><button class="btn primary" data-session>${store.data.sessions?.[course]?'Resume practice':'Start practice'}</button></section>`);
-  el.insertBefore(sessionCard,cont);
-  $('[data-session]',sessionCard).addEventListener('click',()=>go('#/session'));
   const target = upNext || selectedUnits[0].lessons[0];
   const resume = last && !store.isDone(last.lesson) ? last : null;
   const contLesson = resume ? findLesson(resume.lesson).lesson : target;
-  cont.appendChild(h(`<button class="continue-card">
-    <span class="eyebrow">${resume ? 'Pick up where you left off' : doneCount ? 'Up next' : 'Start here'}</span>
-    <span class="title">${contLesson.title}</span>
-    <span class="muted">${contLesson.summary}</span>
-    <span class="go">${icons.play}</span>
-  </button>`));
-  cont.firstChild.addEventListener('click', () => go(`#/lesson/${contLesson.id}/${resume ? resume.step : 0}`));
-
-  // Daily practice, and tools for practising on your own.
-  const ready = dailyReady(store.data.done, store.setting('course'));
-  const practiceDay=practiceKey(course,today());
-  const doneToday = store.data.practice?.[practiceDay];
-  const daily = h(`<div class="practice-col">
-    <div class="practice-cards">
-    <button class="warmup-card" data-warmup aria-label="Start warm-up · About 3 minutes">
-      <span class="eyebrow">Warm-up</span><span class="title">Start warm-up</span>
-      <span class="muted">About 3 minutes · Gentle, familiar patterns</span>
-    </button>
-    <button class="daily-card ${doneToday ? 'done' : ''}" ${ready ? '' : 'disabled'}>
-      <span class="eyebrow">${doneToday ? `${icons.check} Done today` : 'Daily practice'}</span>
-      <span class="title">Today's practice</span>
-      <span class="muted">${ready ? (doneToday ? streakText() : 'About ten minutes, from what you\'ve learned') : 'Unlocks after '+courseInfo.unlock}</span>
-    </button>
+  const el = h(`<main class="home compact-home">
+    <header class="home-head">
+      <h1>Piano Tutor</h1>
+      <div class="head-actions"><button class="pill home-menu-button" data-menu aria-haspopup="dialog" aria-expanded="false">Menu</button></div>
+    </header>
+    <div class="home-course-row">
+      <nav class="course-switch" aria-label="Course level">
+        ${Object.entries(COURSES).map(([id,info])=>`<button class="pill" data-course="${id}" aria-pressed="${course===id}">${info.label}</button>`).join('')}
+      </nav>
+      <p class="home-progress muted">${doneCount} of ${total} lessons complete</p>
     </div>
-    <div class="tool-row">
-      <button class="pill" data-metronome>${icons.metronome}<span>Metronome</span></button>
-      <button class="pill" data-drill ${(store.isDone('treble-reading') || course!=='beginner') ? '' : 'disabled'}>${icons.note}<span>Reading drill</span></button>
-    </div>
-  </div>`);
-  cont.appendChild(daily);
-  $('[data-warmup]', daily).addEventListener('click',()=>go('#/lesson/warmup/0'));
-  $('.daily-card', daily).addEventListener('click', () => go('#/lesson/daily/0'));
-  $('[data-metronome]', daily).addEventListener('click', () => go('#/metronome'));
-  $('[data-drill]', daily).addEventListener('click', () => go('#/lesson/drill/0'));
+    <section class="continue home-primary" aria-label="Continue learning or start practice">
+      <button class="continue-card">
+        <span class="eyebrow">${doneCount || resume ? 'Continue lesson' : 'Start learning'}</span>
+        <span class="title">${contLesson.title}</span>
+        <span class="muted">${contLesson.summary}</span>
+        <span class="go">${icons.play}</span>
+      </button>
+      <button class="guided-card" data-session>
+        <span class="eyebrow">Guided practice</span>
+        <span class="title">${store.data.sessions?.[course]?'Resume practice':'Start practice'}</span>
+        <span class="muted">5, 15 or 30 minutes · A routine for today</span>
+        <span class="guided-arrow" aria-hidden="true">${icons.next}</span>
+      </button>
+    </section>
+    <nav class="home-quick" aria-label="Quick access">
+      <button class="quick-card" data-pieces>${icons.book}<span><b>My Pieces</b><small>Saved songs &amp; practice notes</small></span>${icons.next}</button>
+      <button class="quick-card warmup-card" data-warmup aria-label="Start warm-up · About 3 minutes">${icons.piano}<span><b>Warm-up</b><small>About 3 minutes · Familiar patterns</small></span>${icons.next}</button>
+    </nav>
+    <section class="units"></section>
+  </main>`);
+  $('.continue-card',el).addEventListener('click',()=>go(`#/lesson/${contLesson.id}/${resume ? resume.step : 0}`));
+  $('[data-session]',el).addEventListener('click',()=>go('#/session'));
+  $('[data-pieces]',el).addEventListener('click',()=>go('#/pieces'));
+  $('[data-warmup]',el).addEventListener('click',()=>go('#/lesson/warmup/0'));
+  const menuButton=$('[data-menu]',el);
+  menuButton.addEventListener('click',()=>{
+    menuButton.setAttribute('aria-expanded','true');
+    showHomeMenu(()=>menuButton.setAttribute('aria-expanded','false'));
+  });
+  $('.head-actions',el).insertBefore(micButton({labelled:true}),menuButton);
 
   const units = $('.units', el);
   selectedUnits.forEach((u, ui) => {
@@ -230,13 +209,7 @@ function showHome() {
   HYMNS.filter(l=>l.course===course).forEach((l, i) => $('.lesson-row', hymns).appendChild(lessonCard(l, i, false, l.title, `Unit ${l.unitNumber}`)));
   units.appendChild(hymns);
 
-  $('[data-notes]', el).addEventListener('click', () => go('#/notes/'+courseInfo.notes));
-  $('[data-free]', el).addEventListener('click', () => go('#/free'));
-  $('[data-pieces]', el).addEventListener('click', () => go('#/pieces'));
-  $('[data-technique]', el).addEventListener('click', () => go('#/technique'));
-  el.querySelectorAll('[data-songbook]').forEach((b) => b.addEventListener('click', () => go('#/songbook')));
-  $('[data-settings]', el).addEventListener('click', showSettings);
-  $('.head-actions', el).insertBefore(micButton({ labelled: true }), $('[data-settings]', el));
+  el.querySelectorAll('[data-songbook]').forEach(b=>b.addEventListener('click',()=>go('#/songbook')));
   el.querySelectorAll('[data-course]').forEach(b=>b.addEventListener('click',()=>{store.setting('course',b.dataset.course);route();}));
   app.replaceChildren(el);
   // Bring the next lesson into view in its row.
@@ -256,6 +229,40 @@ function lessonCard(l, index, isNext, title = l.title, eyebrow = '') {
     <span class="muted">${l.summary}</span></button>`);
   card.addEventListener('click', () => go(`#/lesson/${l.id}/0`));
   return card;
+}
+
+function showHomeMenu(onClose) {
+  const course=validCourse(store.setting('course')),info=COURSES[course];
+  const ready=dailyReady(store.data.done,course);
+  const doneToday=store.data.practice?.[practiceKey(course,today())];
+  const readingReady=store.isDone('treble-reading')||course!=='beginner';
+  const dlg=h(`<div class="sheet-backdrop home-menu"><div class="sheet" role="dialog" aria-label="Piano Tutor menu">
+    <div class="sheet-head"><h2>Menu</h2><button class="icon-btn" data-close aria-label="Close menu">${icons.x}</button></div>
+    <nav class="home-menu-groups" aria-label="Piano Tutor tools">
+      <section><h3>Music &amp; resources</h3>
+        <button class="menu-link" data-songbook>Songbook<small>Browse and print your course songs</small></button>
+        <button class="menu-link" data-notes>Chapter notes<small>Read or download lesson summaries</small></button>
+        <button class="menu-link" data-technique>Technique videos<small>Demonstrations from piano teachers</small></button>
+      </section>
+      <section><h3>Practice tools</h3>
+        <button class="menu-link" data-free>Free play</button>
+        <button class="menu-link" data-metronome>Metronome</button>
+        <button class="menu-link" data-drill ${readingReady?'':'disabled'}>Reading drill${readingReady?'':'<small>Unlocks after Treble reading</small>'}</button>
+        <button class="menu-link daily-card" data-daily ${ready?'':'disabled'}>Daily review<small>${ready?(doneToday?'Done today · '+streakText():"Review what you’ve learned"):'Unlocks after '+info.unlock}</small></button>
+      </section>
+      <section><h3>Settings</h3>
+        <button class="menu-link" data-calibrate>Keyboard calibration<small>Manage microphone recognition setup</small></button>
+        <button class="menu-link" data-settings>Settings &amp; backup<small>Display, audio, backup and restore</small></button>
+      </section>
+    </nav>
+  </div></div>`);
+  const close=mountSheet(dlg,onClose);disposers.push(close);
+  $('[data-close]',dlg).addEventListener('click',close);
+  dlg.addEventListener('click',e=>{if(e.target===dlg)close();});
+  const routes={'data-songbook':'#/songbook','data-notes':'#/notes/'+info.notes,'data-technique':'#/technique','data-free':'#/free','data-metronome':'#/metronome','data-drill':'#/lesson/drill/0','data-daily':'#/lesson/daily/0'};
+  for(const [attribute,hash]of Object.entries(routes))$(`[${attribute}]`,dlg).addEventListener('click',()=>{close();go(hash);});
+  $('[data-settings]',dlg).addEventListener('click',()=>{close();showSettings();});
+  $('[data-calibrate]',dlg).addEventListener('click',()=>{close();showCalibration();});
 }
 
 // ---------------------------------------------------------------- settings
@@ -462,7 +469,7 @@ function showLesson(id, stepIndex) {
       return;
     }
     if (lesson.warmup) {
-      return celebrate(lesson,dailyReady(store.data.done,lesson.course)?{id:'daily',title:'Daily Practice'}:null,()=>go('#/lesson/warmup/0'));
+      return celebrate(lesson,dailyReady(store.data.done,lesson.course)?{id:'daily',title:'Daily Review'}:null,()=>go('#/lesson/warmup/0'));
     }
     if (lesson.daily) {
       if (id === 'daily') store.practised(practiceKey(store.setting('course'),today()));
@@ -531,7 +538,7 @@ function celebrate(lesson, nxt, again) {
     <div class="sheet-actions">
       <button class="text-btn" data-home>${lesson.warmup?'Continue to lessons':'All lessons'}</button>
       ${again ? `<button class="btn" data-again>${icons.restart} ${lesson.warmup?'Repeat warm-up':lesson.id === 'drill' ? 'New notes' : 'Play again'}</button>` : ''}
-      ${nxt ? `<button class="btn primary" data-next>${lesson.warmup?'Continue to Daily Practice':'Next: '+nxt.title}</button>` : ''}
+      ${nxt ? `<button class="btn primary" data-next>${lesson.warmup?'Continue to Daily Review':'Next: '+nxt.title}</button>` : ''}
     </div>
   </div></div>`);
   $('[data-home]', dlg).addEventListener('click', () => { dlg.remove(); go('#/'); });

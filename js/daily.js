@@ -94,7 +94,7 @@ export function buildDaily(done, date = today(), course='beginner') {
   if(course==='intermediate') return buildIntermediateDaily(done,date);
   const rand = seeded(date);
   const steps = [{
-    t: 'read', title: 'Today\'s practice',
+    t: 'read', title: 'Daily review',
     body: `<p>About ten minutes, built from what you've already learned: a warm-up, ${done['c-scale'] ? 'a scale, ' : ''}some sight-reading, a skill to polish and a song to enjoy.</p>
     <p>Little and often beats long and rare. A few minutes every day is how fingers learn.</p>`,
   }];
@@ -124,7 +124,7 @@ export function buildDaily(done, date = today(), course='beginner') {
     steps.push({ ...s, title: `Song: ${s.title}`, say: `From "${s.from}". Play it musically, just for the joy of it.` });
   }
   return {
-    id: 'daily', daily: true, title: 'Today\'s practice',
+    id: 'daily', daily: true, title: 'Daily review',
     summary: 'About ten minutes: warm-up, reading, review and a song.', steps,
   };
 }
@@ -152,13 +152,13 @@ function buildIntermediateDaily(done,date) {
   const completed=UNITS.filter(u=>u.course==='intermediate').flatMap(u=>u.lessons).filter(l=>done[l.id]&&!l.recital);
   const skills=completed.filter(l=>!l.steps.some(s=>s.song));
   const hymns=completed.filter(l=>l.steps.some(s=>s.song));
-  const steps=[{t:'read',title:'Today’s intermediate practice',body:'<p>Start with relaxed movement. Review one learned skill, read a short unfamiliar phrase, then shape a hymn you know. Choose a manageable loop and finish with a complete phrase.</p>'}];
+  const steps=[{t:'read',title:'Intermediate daily review',body:'<p>Start with relaxed movement. Review one learned skill, read a short unfamiliar phrase, then shape a hymn you know. Choose a manageable loop and finish with a complete phrase.</p>'}];
   const skill=skills.length?pick(rand,skills):UNITS.find(u=>u.id==='i1').lessons[0];
   const drill=skill.steps.find(s=>s.t==='play');if(drill)steps.push({...drill,title:'Skill review: '+skill.title});
   steps.push(readingStep(rand,'treble',{landmarks:true}));
   if(hymns.length){const hymn=pick(rand,hymns);steps.push({...hymn.steps.filter(s=>s.t==='play'&&s.song).at(-1),title:'Hymn review: '+hymn.title});}
   steps.push({t:'read',title:'One musical goal',body:'<p>Play the last phrase again without looking at highlighted keys. Name one improvement and choose a small goal for tomorrow. Keep listening for a clear melody, a steady pulse and comfortable movement.</p>'});
-  return {id:'daily',daily:true,title:'Today’s intermediate practice',summary:'A learned skill, fresh reading and a hymn.',steps};
+  return {id:'daily',daily:true,title:'Intermediate daily review',summary:'A learned skill, fresh reading and a hymn.',steps};
 }
 
 // Short original tonal reading phrases, with separate keys for timed drill records.
@@ -172,9 +172,9 @@ function buildAdvancedDaily(done,date) {
  const rand=seeded('advanced:'+date),completed=UNITS.filter(u=>u.course==='advanced').flatMap(u=>u.lessons).filter(l=>done[l.id]&&!l.recital);
  const skills=completed.filter(l=>!l.steps.some(s=>s.song)),hymns=completed.filter(l=>l.steps.some(s=>s.song));
  const skill=skills.length?pick(rand,skills):UNITS.find(u=>u.id==='a1').lessons[0];
- const steps=[{t:'read',title:'Today’s advanced practice',body:'<p>Choose one technical repair, read a fresh tonal phrase, and shape a learned hymn. Start with comfortable movement and finish by naming one audible improvement. Practise any creative alternative away from the written reference check.</p>'},
+ const steps=[{t:'read',title:'Advanced daily review',body:'<p>Choose one technical repair, read a fresh tonal phrase, and shape a learned hymn. Start with comfortable movement and finish by naming one audible improvement. Practise any creative alternative away from the written reference check.</p>'},
  {...skill.steps.find(s=>s.t==='play'),title:'Skill review: '+skill.title},advancedReading(rand)];
  if(hymns.length){const h=pick(rand,hymns);steps.push({...h.steps.filter(s=>s.t==='play'&&s.song).at(-1),title:'Hymn review: '+h.title});}
  steps.push({t:'read',title:'Listen and decide',body:'<p>Play a phrase from memory or transpose it offline. Then assess melody, bass, pulse and pedal. Write one specific goal for the next session.</p>'});
- return {id:'daily',course:'advanced',daily:true,title:'Today’s advanced practice',summary:'A learned skill, tonal reading and a musical decision.',steps};
+ return {id:'daily',course:'advanced',daily:true,title:'Advanced daily review',summary:'A learned skill, tonal reading and a musical decision.',steps};
 }

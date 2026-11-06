@@ -30,9 +30,9 @@ try{
   for(const [width,height]of [[320,740],[390,844],[844,390],[1280,800]]){
    await page.setViewportSize({width,height});
    await page.evaluate(()=>document.fonts.ready);
-   const [a,b]=await page.evaluate(()=>['[data-warmup]','.daily-card'].map(s=>document.querySelector(s).getBoundingClientRect().toJSON()));
-   if(!(a&&b&&Math.abs(a.y-b.y)<2&&a.x+a.width<b.x+1)){await page.screenshot({path:'/tmp/warmup-layout-failure.png'});throw Error('Cards not adjacent '+JSON.stringify({course,width,a,b,styles:await page.locator('.practice-cards').evaluate(el=>({display:getComputedStyle(el).display,width:getComputedStyle(el).width,columns:getComputedStyle(el).gridTemplateColumns}))}));}
-   for(const selector of ['[data-warmup]','.daily-card'])assert.ok(await page.locator(selector).evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Card label overflows');
+   const [a,b]=await page.evaluate(()=>['[data-pieces]','[data-warmup]'].map(s=>document.querySelector(s).getBoundingClientRect().toJSON()));
+   if(!(a&&b&&Math.abs(a.y-b.y)<2&&a.x+a.width<b.x+1)){await page.screenshot({path:'/tmp/warmup-layout-failure.png'});throw Error('Cards not adjacent '+JSON.stringify({course,width,a,b,styles:await page.locator('.home-quick').evaluate(el=>({display:getComputedStyle(el).display,width:getComputedStyle(el).width,columns:getComputedStyle(el).gridTemplateColumns}))}));}
+   for(const selector of ['[data-pieces]','[data-warmup]'])assert.ok(await page.locator(selector).evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Card label overflows');
    assert.ok(a.x>=0&&b.x+b.width<=width+1,'Practice card outside viewport');
   }
   await page.setViewportSize({width:844,height:390});
@@ -63,14 +63,14 @@ try{
   await page.getByRole('button',{name:'Repeat warm-up',exact:true}).click();await waitStep(0);
   await goStep(5);await page.getByRole('button',{name:'Finish warm-up',exact:true}).click();await page.waitForSelector('.celebrate');
   if(course==='beginner'&&!done['rh-c-position']){
-   assert.equal(await page.getByRole('button',{name:'Continue to Daily Practice',exact:true}).count(),0);
+   assert.equal(await page.getByRole('button',{name:'Continue to Daily Review',exact:true}).count(),0);
    await page.getByRole('button',{name:'Continue to lessons',exact:true}).click();await page.waitForSelector('[data-warmup]');
   } else {
-   await page.getByRole('button',{name:'Continue to Daily Practice',exact:true}).click();await page.waitForFunction(()=>location.hash==='#/lesson/daily/0'&&document.querySelector('.stage .read'));
-   assert.deepEqual(await snapshot(),before,'Starting Daily Practice changed completion records');
+   await page.getByRole('button',{name:'Continue to Daily Review',exact:true}).click();await page.waitForFunction(()=>location.hash==='#/lesson/daily/0'&&document.querySelector('.stage .read'));
+   assert.deepEqual(await snapshot(),before,'Starting Daily Review changed completion records');
   }
  }
  // Reload a direct warm-up URL and confirm registration and course are retained.
  await page.goto(origin+'/#/lesson/warmup/1');await page.reload();await page.waitForSelector('.music svg');assert.match(await page.locator('.top-title').innerText(),/Advanced warm-up/);
- assert.deepEqual(errors,[]);console.log('Warm-up cards at four viewports, four progress scenarios, two-round input, restart, loops/hands, optional finish, repetition, Daily Practice handoff, progress isolation and reload passed');
+ assert.deepEqual(errors,[]);console.log('Warm-up cards at four viewports, four progress scenarios, two-round input, restart, loops/hands, optional finish, repetition, Daily Review handoff, progress isolation and reload passed');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

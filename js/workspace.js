@@ -19,7 +19,7 @@ export function mountSession(root,{go,onBack}) {
   if(session && focus && playable(focus) && session.opened!==3 && session.stages[3].status==='pending') {
     session.stages[3].target={lesson:focus.lesson,step:focus.step};store.save();
   }
-  const main=shell(root,'Your practice',onBack);
+  const main=shell(root,'Guided practice',onBack);
   const redraw=()=>mountSession(root,{go,onBack});
   if(!session){
     main.innerHTML=`<section class="workspace-card"><span class="eyebrow">Make time for music</span><h2>How much time do you have?</h2><p>Suggested pacing, with no countdown. Repeat a section or finish early whenever you like.</p><div class="session-lengths">${Object.keys(SESSION_MINUTES).map(m=>`<button class="btn ${m==='15'?'primary':''}" data-minutes="${m}">${m} minutes</button>`).join('')}</div></section>

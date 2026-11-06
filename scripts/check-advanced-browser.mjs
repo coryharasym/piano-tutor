@@ -45,7 +45,7 @@ try {
  for(const [course,title]of [['Beginner',/Mary/],['Intermediate',/Three notes/],['Advanced',/Coordinate two against three/]]){
   await page.getByRole('button',{name:course,exact:true}).click();assert.match(await page.locator('.continue-card').innerText(),title);
  }
- await page.locator('[data-notes]').click();await page.waitForSelector('.notes-chapter');assert.equal(await page.locator('.notes-chapter').count(),8);assert.match(await page.locator('.notes-bar h1').innerText(),/Advanced/);
+ await page.locator('[data-menu]').click();await page.locator('[data-notes]').click();await page.waitForSelector('.notes-chapter');assert.equal(await page.locator('.notes-chapter').count(),8);assert.match(await page.locator('.notes-bar h1').innerText(),/Advanced/);
  const links=await page.locator('a[download]').evaluateAll(as=>as.map(a=>a.href));assert.equal(links.length,9);
  for(const url of links){const r=await page.request.get(url);assert.equal(r.status(),200);assert.ok((await r.body()).subarray(0,5).equals(Buffer.from('%PDF-')));}
  // Lyrics, verse selection, print, playback, speed, hands and loops remain available.
@@ -78,7 +78,7 @@ try {
  await page.goto(origin+'/#/');await page.waitForSelector('[data-course]');
  // Daily practice uses advanced progress and records an advanced-specific day.
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('piano-tutor:v1'));s.done['adv-readiness']=true;localStorage.setItem('piano-tutor:v1',JSON.stringify(s));});await page.reload();
- await page.locator('.daily-card').click();await page.waitForSelector('.stage');assert.match(await page.locator('.top-title').innerText(),/advanced practice/);
+ await page.locator('[data-menu]').click();await page.locator('.daily-card').click();await page.waitForSelector('.stage');assert.match(await page.locator('.top-title').innerText(),/Advanced daily review/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('piano-tutor:v1')).settings.course),'advanced');
  assert.deepEqual(errors,[]);
  console.log('Three-course resume, 9 PDF downloads, verses, printing, hands, loops, songbook, recital suite and daily practice passed');

@@ -1,0 +1,68 @@
+/* Compact home navigation, independent of lesson and print layouts. */
+.compact-home .home-head { flex-wrap:nowrap; gap:10px; margin-bottom:12px; }
+.compact-home .home-head h1 { font-size:clamp(1.1rem,3.2vw,1.5rem); white-space:nowrap; }
+.compact-home .head-actions { flex:none; flex-wrap:nowrap; gap:6px; }
+.compact-home .head-actions .pill { min-height:40px; height:40px; justify-content:center; }
+.compact-home .head-actions .mic-btn { width:auto; min-width:88px; padding:0 10px; gap:5px; }
+.compact-home .home-menu-button { padding:0 16px; }
+.home-course-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:14px; }
+.compact-home .course-switch { margin:0; gap:6px; flex-wrap:nowrap; }
+.compact-home .course-switch button { height:38px; min-height:38px; padding:6px 14px; }
+.home-progress { margin:0; font-size:.8rem; white-space:nowrap; }
+.compact-home .home-primary { display:grid; grid-template-columns:1.2fr 1fr; gap:12px; margin:0 0 12px; }
+.compact-home .continue-card,.guided-card { min-width:0; margin:0; padding:16px 52px 16px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; text-align:left; min-height:112px; border-radius:16px; position:relative; }
+.compact-home .continue-card .title,.guided-card .title { font-size:1.08rem; font-weight:700; line-height:1.3; }
+.compact-home .continue-card .muted,.guided-card .muted { font-size:.82rem; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.compact-home .continue-card .go { width:30px; height:30px; right:14px; }
+.compact-home .continue-card .go .icon { width:18px; height:18px; }
+.guided-card { background:var(--accent-soft); color:var(--ink); border:1px solid #bbded5; box-shadow:var(--shadow); }
+.guided-card .eyebrow { color:#126e60; }
+.guided-arrow { position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--accent); }
+.home-quick { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:22px; }
+.quick-card { min-width:0; display:flex; flex-direction:row; align-items:center; gap:10px; padding:12px 14px; text-align:left; border:1px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:var(--shadow); }
+.quick-card > .icon:first-child { color:var(--accent); }
+.quick-card > span { flex:1; min-width:0; }
+.quick-card b { display:block; font-size:.95rem; }
+.quick-card small { display:block; font-size:.78rem; line-height:1.3; color:var(--ink-soft); }
+.quick-card > .icon:last-child { width:18px; color:var(--ink-soft); }
+.home-menu .sheet { width:min(760px,100%); }
+.home-menu .sheet-head { position:sticky; top:-18px; z-index:1; padding:4px 0 8px; background:var(--panel); }
+.home-menu-groups { display:grid; gap:20px; }
+.home-menu-groups section { min-width:0; }
+.home-menu-groups h3 { margin:0 0 8px; font-size:.85rem; color:var(--ink-soft); }
+.home-menu .menu-link { display:flex; flex-direction:column; width:100%; margin:0; min-height:44px; padding:9px 10px; border:0; border-radius:10px; background:transparent; box-shadow:none; text-align:left; font-size:.9rem; font-weight:600; }
+.home-menu .menu-link:hover,.home-menu .menu-link:focus-visible { background:var(--accent-soft); }
+.home-menu .menu-link small { margin-top:2px; color:var(--ink-soft); font-size:.75rem; line-height:1.35; font-weight:400; }
+.home-menu .menu-link:disabled { opacity:.5; cursor:default; }
+@media(min-width:700px) { .home-menu-groups { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; } }
+@media(max-width:600px) {
+ .home-course-row { align-items:flex-start; gap:6px; }
+ .compact-home .course-switch { width:100%; }
+ .compact-home .course-switch button { flex:1; min-width:0; padding:6px 8px; font-size:.82rem; }
+ .compact-home .home-primary { grid-template-columns:1fr; }
+ .compact-home .continue-card,.guided-card { min-height:98px; }
+ .quick-card { padding:12px 10px; gap:6px; }
+ .quick-card > .icon:last-child { display:none; }
+ .quick-card small { font-size:.72rem; }
+ .home-menu .sheet { max-width:440px; }
+}
+@media(orientation:landscape) and (max-height:460px) {
+ .compact-home { padding-top:max(10px,env(safe-area-inset-top)); }
+ .compact-home .home-head { margin-bottom:8px; }
+ .compact-home .head-actions .pill { height:36px; min-height:36px; }
+ .home-course-row { margin-bottom:10px; }
+ .compact-home .course-switch button { min-height:34px; height:34px; padding:4px 14px; }
+ .compact-home .continue-card,.guided-card { min-height:100px; padding-top:12px; padding-bottom:12px; }
+ .home-quick { margin-bottom:16px; }
+ .quick-card { padding-top:10px; padding-bottom:10px; }
+ .home-menu .sheet-head { margin-bottom:4px; }
+ .home-menu-groups { gap:10px; }
+ .home-menu-groups h3 { margin-bottom:4px; }
+ .home-menu .menu-link { padding:7px 8px; }
+}
+@media(max-width:360px) {
+ .compact-home .home-menu-button { padding:0 10px; }
+ .compact-home .head-actions .mic-btn { padding:0 8px; min-width:82px; font-size:.8rem; }
+}
+.compact-home .continue-card .title { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+@media(orientation:landscape) and (max-height:460px) { .compact-home .continue-card .muted { -webkit-line-clamp:1; } }

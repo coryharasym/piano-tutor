@@ -149,7 +149,7 @@ including every piece in both final programmes.
 
 ## Warm-up
 
-The home page has a Start warm-up card beside Daily Practice. This optional,
+The home page has a Warm-up shortcut beside My Pieces. Daily review is available from Menu → Practice tools. This optional,
 self-paced routine takes about three minutes, including setup and brief pauses:
 settle in, right hand, left hand, hand coordination, a small musical phrase and
 a closing check. Each playing pattern has two short rounds at a comfortable
@@ -226,3 +226,23 @@ Landscape layouts reserve more room for the score, fit following notation to
 its available height and size the lesson above the measured session dock.
 Instructions remain under More when the short playing view hides the text.
 Menus and dialogs respect safe areas; full scores remain scrollable.
+
+
+## Compact home page
+
+The header keeps the microphone toggle and a Menu button visible. Course tabs
+and a small completion count sit above Continue lesson and Guided practice.
+Those primary cards share a row on desktop and landscape phones, with My Pieces
+and Warm-up immediately below; portrait phones stack the two primary cards.
+
+Menu groups Songbook, Chapter notes and Technique videos under Music & resources;
+Free play, Metronome, Reading drill and Daily review under Practice tools; and
+calibration plus settings/backup under Settings. It uses the existing modal focus
+trap, Escape handling and background scroll lock. Daily review is the renamed
+existing daily activity, with the same readiness gates, lesson ID and streak
+records. Guided practice retains its separate resumable sessions.
+
+Browser checks cover the compact home at five viewport sizes, primary-action
+visibility, all menu destinations, course/readiness gates, focus restoration,
+background locking and progress preservation. The iPhone landscape safe-area
+check also includes the grouped menu.
