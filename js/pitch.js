@@ -154,6 +154,17 @@ export class NoteTracker {
 // Local peaks reject neighbouring semitones; amplitude (not squared energy)
 // allows a softer hand to remain audible beneath the melody.
 export function spectrumNoteEvidence(db, sampleRate, fftSize, midis) {
+  const notes = [...new Set(midis)];
+  const heard = chordEvidence(db, sampleRate, fftSize, notes);
+  if (notes.length < 2 || heard.length === notes.length) return heard;
+  // Recover a masked fundamental only when a complete, corroborated chord
+  // survives stronger checks for bass overtones. Partial fallback evidence
+  // must never accumulate with the ordinary detector to invent a chord.
+  const recovered = chordEvidence(db, sampleRate, fftSize, notes, true);
+  return recovered.length === notes.length ? recovered : heard;
+}
+
+function chordEvidence(db, sampleRate, fftSize, midis, recover = false) {
   const notes = [...new Set(midis)].sort((a, b) => a - b);
   if (!notes.length) return [];
   const hz = sampleRate / fftSize;
@@ -164,18 +175,21 @@ export function spectrumNoteEvidence(db, sampleRate, fftSize, midis) {
     // A weak partial must stand above its local surroundings, not just be a
     // noise bin close to the expected pitch. Three bins clear the main lobe.
     const background = Math.max(db[Math.max(0, i - 3)], db[Math.min(db.length - 1, i + 3)]);
-    peaks.push({ freq: (i + (Number.isFinite(shift) ? shift : 0)) * hz, amp: 10 ** (db[i] / 20), prominent: db[i] - background >= 6 });
+    peaks.push({ freq: (i + (Number.isFinite(shift) ? shift : 0)) * hz, amp: 10 ** (db[i] / 20), prominence: db[i] - background, prominent: db[i] - background >= 6 });
   }
   const strongest = Math.max(0, ...peaks.map(p => p.amp));
   const at = (freq, relative = 0.055) => peaks.find(p => Math.abs(1200 * Math.log2(p.freq / freq)) < (relative >= 0.055 ? 35 : 25) && p.amp >= strongest * relative && (relative >= 0.055 || p.prominent));
   const frequencies = notes.map(m => 440 * 2 ** ((m - 69) / 12));
   // Include strong unexpected lower roots. Otherwise an E3 played by
   // mistake can impersonate expected E4 through its second harmonic.
-  const roots = peaks.filter(p => p.freq >= 55 && p.freq < 2100 && p.prominent && p.amp >= strongest * 0.01)
+  // A root can be masked by a neighbouring bass note. Its strong second
+  // and fourth partials still disqualify an apparent upper-octave key.
+  const rootAt = freq => peaks.find(p => Math.abs(1200 * Math.log2(p.freq / freq)) < 45 && p.amp >= strongest * 0.015);
+  const roots = peaks.filter(p => p.freq >= (recover ? 27.5 : 55) && p.freq < 2100 && (p.prominent || (recover && p.amp >= strongest * 0.15)) && p.amp >= strongest * 0.01)
     // Low roots have few FFT bins. Quantize that candidate before looking
     // for its upper partials, rather than multiplying the bin error by 3.
     .map(p => 440 * 2 ** ((Math.round(69 + 12 * Math.log2(p.freq / 440)) - 69) / 12))
-    .filter(root => at(root * 2, 0.015) && at(root * 3, 0.015) && !frequencies.some(f => {
+    .filter(root => ((at(root * 2, 0.015) && at(root * 3, 0.015)) || (recover && at(root) && rootAt(root * 2) && rootAt(root * 4))) && !frequencies.some(f => {
       const ratio = root / f, h = Math.round(ratio);
       return h >= 1 && Math.abs(1200 * Math.log2(ratio / h)) < 35;
     }));
@@ -184,9 +198,10 @@ export function spectrumNoteEvidence(db, sampleRate, fftSize, midis) {
   // TWO clear upper partials before treating their overtones as played keys.
   for (const freq of frequencies) for (const divisor of [2, 4]) {
     const root = freq / divisor, bin = Math.round(root / hz);
-    if (root < 55 || frequencies.some(f => Math.abs(1200 * Math.log2(root / f)) < 35)) continue;
+    if (root < (recover ? 27.5 : 55) || frequencies.some(f => Math.abs(1200 * Math.log2(root / f)) < 35)) continue;
     const band = 10 ** (Math.max(...db.slice(Math.max(0, bin - 1), bin + 2)) / 20);
-    if (band >= strongest * 0.01 && at(root * 2, 0.015) && at(root * 3, 0.015)) roots.push(root);
+    const adjacentBass = frequencies.some(f => Math.abs(1200 * Math.log2(root / f)) < 180);
+    if ((band >= strongest * 0.01 && at(root * 2, 0.015) && at(root * 3, 0.015)) || (recover && adjacentBass && band >= strongest * 0.15 && rootAt(root * 2) && rootAt(root * 4))) roots.push(root);
   }
   return notes.filter((_, index) => {
     const freq = frequencies[index];
@@ -201,6 +216,10 @@ export function spectrumNoteEvidence(db, sampleRate, fftSize, midis) {
     // Softer notes need corroboration. This helps a held bass/melody remain
     // detectable after its attack without accepting an isolated weak peak.
     if (independent(freq) && at(freq, 0.015) && partials.length) return true;
+    // A broader, quieter fundamental needs TWO independent upper partials,
+    // not a lone noise peak. It is used only by the all-notes fallback above.
+    const lowFundamental = peaks.find(p => Math.abs(1200 * Math.log2(p.freq / freq)) < 45 && p.amp >= strongest * 0.015 && p.prominence >= 3);
+    if (recover && independent(freq) && lowFundamental && partials.length >= 2) return true;
     // Two multiples of the same partial (e.g. 3 and 6) can both belong to
     // an unexpected lower key. Require coprime harmonic numbers instead.
     const gcd = (a, b) => b ? gcd(b, a % b) : a;

@@ -171,3 +171,6 @@ assert.equal(easyCoach.easyButton.hidden,true);
 easyCoach.update([48,52,55]); easyCoach.easyButton.click();
 assert.equal(easyCoach.takeNote(52),false,'turning easy off restores chord requirement');
 console.log(`${checks} real-piano chord checks plus sustain, masking, Flow, expiry and explicit-assistance regressions passed`);
+
+// Included by the existing npm test entry point.
+await import('./uncalibrated-chords.test.mjs');
