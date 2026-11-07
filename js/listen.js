@@ -34,42 +34,56 @@ export class Listener {
     });
   }
 
-  async start() {
-    if (this.active) return true;
-    await piano.unlock();
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
-    // The mic gets its own audio context, made after the mic is on. iPhones
-    // switch the hardware sample rate when recording starts; a context made
-    // earlier keeps the old rate and hears every note about a semitone off.
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx();
-    if (ctx.state === 'suspended') await ctx.resume();
-    this.ctx = ctx;
-    const src = ctx.createMediaStreamSource(this.stream);
-    this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = 8192;
-    this.analyser.smoothingTimeConstant = 0;
-    src.connect(this.analyser);
-    this.time = new Float32Array(4096);
-    this.freq = new Float32Array(this.analyser.frequencyBinCount);
-    this.clearRecent();
-    this.tracker = new NoteTracker();
-    this.consumedChord = null;
-    this.active = true;
-    this.timer = setInterval(() => this.tick(), 23);
-    return true;
+  start() {
+    if (this.active) return Promise.resolve(true);
+    if (this.starting) return this.starting;
+    const request = this.generation = (this.generation || 0) + 1;
+    let stream, ctx;
+    const cancelled = () => request !== this.generation;
+    const release = () => { stream?.getTracks().forEach(t => t.stop()); ctx?.close()?.catch?.(() => {}); };
+    const run = async () => {
+      try {
+        await piano.unlock();
+        if (cancelled()) return false;
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        });
+        if (cancelled()) { release(); return false; }
+        // A new context follows the hardware rate chosen when iPhone recording starts.
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        ctx = new Ctx();
+        if (ctx.state === 'suspended') await ctx.resume();
+        if (cancelled()) { release(); return false; }
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 8192;
+        analyser.smoothingTimeConstant = 0;
+        src.connect(analyser);
+        this.stream = stream; this.ctx = ctx; this.analyser = analyser;
+        this.time = new Float32Array(4096);
+        this.freq = new Float32Array(analyser.frequencyBinCount);
+        this.clearRecent(); this.tracker = new NoteTracker(); this.consumedChord = null;
+        this.active = true;
+        this.timer = setInterval(() => this.tick(), 23);
+        return true;
+      } catch (error) { release(); if (cancelled()) return false; throw error; }
+    };
+    const pending = run().finally(() => { if (this.starting === pending) this.starting = null; });
+    this.starting = pending;
+    return pending;
   }
 
   stop() {
+    this.generation = (this.generation || 0) + 1;
+    this.starting = null;
     this.active = false;
     this.clearRecent();
     clearInterval(this.timer);
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
-    this.ctx?.close();
+    this.ctx?.close()?.catch?.(() => {});
     this.ctx = null;
+    this.analyser = null;
   }
 
   // The sample rate, nudged so the player's tuning reads as concert pitch.

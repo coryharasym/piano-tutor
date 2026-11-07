@@ -14,12 +14,14 @@ globalThis.performance = { now: () => clock };
 import {UNITS,HYMNS,chooseRecital} from '../js/lessons/index.js';
 import {buildPractice} from '../js/practice.js';
 import {buildWarmup} from '../js/warmup.js';
+import {buildLab,buildHymn} from '../js/musicianship-model.js';
 const catalog=new Map();let occurrences=0;
 const collect=lesson=>{for(const step of lesson.steps.filter(s=>s.t==='play'&&!s.anyOrder))for(const m of buildPractice(step).moments){const notes=[...new Set(m.items.map(i=>i.midi))].sort((a,b)=>a-b);if(notes.length>1){occurrences++;catalog.set(notes.join(','),notes);}}};
 for(const unit of UNITS){for(const l of unit.lessons)collect(l);const rec=unit.lessons.at(-1);for(const p of rec.choices||[]){chooseRecital(unit.id,p.id);collect(rec);}}
 for(const l of HYMNS)collect(l);
 const done=Object.fromEntries(UNITS.flatMap(u=>u.lessons.map(l=>[l.id,true])));
 for(const course of ['beginner','intermediate','advanced'])for(let day=1;day<=14;day++){collect(buildWarmup({},course,'2026-11-'+day));collect(buildWarmup(done,course,'2026-11-'+day));}
+for(const course of ['beginner','intermediate','advanced']){for(let stage=0;stage<6;stage++)collect(buildHymn(stage,course));for(let variant=0;variant<10;variant++)collect(buildLab('sight',done,course,variant));}
 console.log(`${catalog.size} unique chord voicings across ${occurrences} moments`);
 let checks=0;const failures=[];const strictMisses=[];
 
@@ -53,5 +55,5 @@ for (const rate of [44100, 48000]) {
     for(const t of [.16,.24]){clock+=80;silent.freq=mix(want,t);assert.equal(silent.chordHeard(want,{easy:true}),false,'silence cannot pass');checks++;}
   }
 }
-console.log(JSON.stringify({checks,easyFailures:failures.length,strictMisses:strictMisses.length,examples:failures.slice(0,15),strictExamples:strictMisses.slice(0,10)}));
+console.log(JSON.stringify({checks,easyFailures:failures.length,strictMisses:strictMisses.length,strictOctaveMisses:strictMisses.filter(({want})=>want.some((m,i)=>want.some((n,j)=>i!==j&&n!==m&&(n-m)%12===0))).length,examples:failures.slice(0,15),strictExamples:strictMisses.slice(0,10)}));
 assert.equal(failures.length,0,'Every catalog chord and each expected key must be accepted by Easy mode');
