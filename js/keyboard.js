@@ -1,6 +1,7 @@
 // On-screen piano keyboard: plays when tapped, highlights what to press.
 
-import { isBlack, midiToName, prettyName } from './theory.js';
+import { isBlack } from './theory.js';
+import { solfegeName } from './solfege.js';
 import { piano } from './audio.js';
 import { store } from './store.js';
 
@@ -72,14 +73,19 @@ export class Keyboard {
 
   refreshLabels() {
     for (const [m, k] of this.keys) {
-      const name = midiToName(m);
       let text = '';
-      if (this.labels === 'all' && !isBlack(m)) text = prettyName(name);
-      if (this.labels === 'c' && m % 12 === 0) text = prettyName(name, true);
-      if (m === 60 && this.labels !== 'none') text = this.narrow ? 'C4' : 'Middle C';
+      if (this.labels === 'all' && !isBlack(m)) text = solfegeName(this.noteName(m), false);
+      if (this.labels === 'c' && m % 12 === 0) text = solfegeName(this.noteName(m), true);
+      if (m === 60 && this.labels !== 'none') text = this.narrow ? 'Do4' : 'Do central';
       k.querySelector('.key-label').textContent = text;
       k.classList.toggle('middle-c', m === 60);
     }
+  }
+
+  noteName(midi) {
+    const pc = ((midi % 12) + 12) % 12;
+    const octave = Math.floor(midi / 12) - 1;
+    return `${['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][pc]}${octave}`;
   }
 
   // targets: [{midi, finger, hand: 'L'|'R'}]; style 'next' | 'soft'
