@@ -1,4 +1,5 @@
 import { midiToName } from './theory.js';
+import { solfegeName } from './solfege.js';
 
 // Shared lesson/Wait-mode assistance. Sequential practice is an explicit
 // choice, never silently scored as simultaneous chord detection.
@@ -11,7 +12,7 @@ export class ChordCoach {
     this.getEasy = getEasy; this.setEasy = setEasy;
     this.onLevel = level => this.observeLevel(level, Math.max(0.003, (levelSource?.tracker?.noiseFloor || 0.002) * 3.5));
     levelSource?.onLevel?.add(this.onLevel);
-    root.innerHTML = '<span class="chord-readout" role="status" aria-live="polite"></span><button class="pill" data-chord-assist hidden>Play notes separately</button><button class="pill" data-chord-easy hidden>Easy chords: off</button>';
+    root.innerHTML = '<span class="chord-readout" role="status" aria-live="polite"></span><button class="pill" data-chord-assist hidden>Play notes separately</button><button class="pill" data-chord-easy aria-pressed="false">Easy chords: off</button>';
     this.readout = root.querySelector('.chord-readout');
     this.button = root.querySelector('[data-chord-assist]');
     this.easyButton = root.querySelector('[data-chord-easy]');
@@ -55,7 +56,7 @@ export class ChordCoach {
   }
 
   paint() {
-    const name = m => midiToName(m).replace('#', '♯');
+    const name = m => solfegeName(midiToName(m), true);
     let text;
     if (this.easy) {
       text = this.revealTargets ? `Easy chords: play any one of ${this.notes.map(name).join(' or ')}. Assisted practice.` : 'Easy chords: play any one expected chord note. Assisted practice.';
