@@ -1,6 +1,7 @@
 import { listener } from './listen.js';
 import { store } from './store.js';
-import { midiToName, prettyName } from './theory.js';
+import { midiToName } from './theory.js';
+import { solfegeName } from './solfege.js';
 import { mountSheet } from './sheet.js';
 import { profileCompatible, PROFILE_VERSION, PROFILE_FFT } from './chord-profile.js';
 import { KeyCapture } from './key-capture.js';
@@ -64,9 +65,10 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
   };
   const paint = (requireRelease = true) => {
     const midi = notes[index];
-    label.textContent = midi === 60 ? 'Middle C (C4)' : `${prettyName(midiToName(midi))} (${midiToName(midi)})`;
-    const position = midi === 60 ? 'Play Middle C alone' : `Play ${midiToName(midi)} alone, ${midi < 60 ? 'below' : 'above'} Middle C`;
-    status.textContent = `${position}. Key ${index + 1} of ${notes.length}. Hold until the bar fills, then release.`;
+    const name = solfegeName(midiToName(midi));
+    label.textContent = midi === 60 ? 'Do central (Do4)' : name;
+    const position = midi === 60 ? 'Jouez le Do central seul' : `Jouez ${name} seul, ${midi < 60 ? 'sous' : 'au-dessus'} du Do central`;
+    status.textContent = `${position}. Note ${index + 1} sur ${notes.length}. Maintenez jusqu’au remplissage de la barre, puis relâchez.`;
     key = new KeyCapture(midi, noise, requireRelease);
     $('[data-retry]').hidden = false;
     progress.value = 0;
@@ -84,12 +86,12 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
     }
     const result = key.push(frame);
     progress.value = result.count;
-    if (result.state === 'release') status.textContent = 'Release the previous key, then play the requested key alone.';
-    if (result.state === 'quiet') status.textContent = 'Ready. Play the requested key a little louder, or move the phone closer.';
+    if (result.state === 'release') status.textContent = 'Relâchez la note précédente, puis jouez la note demandée seule.';
+    if (result.state === 'quiet') status.textContent = 'Prêt. Jouez la note demandée un peu plus fort, ou rapprochez le téléphone.';
     if (result.state === 'pitch') status.textContent = result.heard != null
-      ? `Hearing ${midiToName(Math.round(result.heard))}; looking for ${midiToName(notes[index])}. Check the octave and play this key alone.`
-      : 'Sound is reaching the mic, but the pitch is unclear. Play this key alone and hold it.';
-    if (result.state === 'settling' || result.state === 'holding') status.textContent = 'Hearing the right key. Keep holding…';
+      ? `J’entends ${solfegeName(midiToName(Math.round(result.heard)))} ; je cherche ${solfegeName(midiToName(notes[index]))}. Vérifiez l’octave et jouez cette note seule.`
+      : 'Le son arrive au micro, mais la hauteur est difficile à identifier. Jouez cette note seule et maintenez-la.';
+    if (result.state === 'settling' || result.state === 'holding') status.textContent = 'Bonne note détectée. Continuez à la maintenir…';
     if (result.state !== 'done') return;
     draft = { ...draft, notes: { ...draft.notes, [notes[index]]: result.sample } };
     store.data.keyboardCalibration = draft;
@@ -104,7 +106,7 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
   async function begin(redo = false) {
     if (complete) { close(); return; }
     const button = $('[data-start]'); button.disabled = true; $('[data-redo]').disabled = true;
-    status.textContent = 'Starting microphone…';
+    status.textContent = 'Démarrage du microphone…';
     try {
       await listener.start();
       if (closed) { if (!wasActive) listener.stop(); return; }
@@ -117,12 +119,12 @@ export function showCalibration(midis = C_POSITION, onDone = () => {}) {
       notes = [...new Set(selected)].filter(m => redo || typeof draft.notes[m] !== 'string' || draft.notes[m].length !== 5464);
       button.hidden = true; $('[data-redo]').hidden = true; $('[data-intro]').hidden = true;
       if (!notes.length) { finish(); return; }
-      label.textContent = 'Measuring room noise';
-      status.textContent = 'Keep all keys released for a moment…';
+      label.textContent = 'Mesure du bruit ambiant';
+      status.textContent = 'Laissez toutes les touches relâchées un instant…';
       listener.onSpectrum.add(capture);
     } catch {
       if (closed) return;
-      status.textContent = 'Could not start the microphone. Allow access in your browser, then try again.';
+      status.textContent = 'Impossible de démarrer le microphone. Autorisez son accès dans le navigateur, puis réessayez.';
       button.disabled = false; $('[data-redo]').disabled = false;
     }
   }
